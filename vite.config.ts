@@ -13,6 +13,7 @@ export default defineConfig({
 			adapter: adapter({ platformProxy: { persist: false } })
 		})
 	],
+	build: { rolldownOptions: { external: ['@resvg/resvg-wasm/index_bg.wasm'] } },
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

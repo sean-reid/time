@@ -4,7 +4,7 @@
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { bodies } from '$lib/catalogue';
-	import { formatRelativeRate } from '$lib/format';
+	import { formatDrift, formatRelativeRate } from '$lib/format';
 	import Plate from '$lib/plate/Plate.svelte';
 	import { Scene } from '$lib/sim/scene.svelte';
 	import { Ticker } from '$lib/sim/ticker';
@@ -40,7 +40,16 @@
 
 	const ticker = new Ticker();
 
+	/** Spoken summary for screen readers, refreshed every half minute rather than every frame. */
+	let announcement = $state('');
+	function announce() {
+		const rate = formatRelativeRate(scene.ship.deficit, scene.earthDeficit);
+		announcement = `Near ${scene.body.name}. Drift ${formatDrift(scene.drift)}. Your clock: ${rate}.`;
+	}
+
 	onMount(() => {
+		announce();
+		const voice = setInterval(announce, 30_000);
 		let prev = performance.now();
 		let frame = 0;
 		const tick = (now: number) => {
@@ -61,6 +70,7 @@
 		return () => {
 			cancelAnimationFrame(frame);
 			ticker.stop();
+			clearInterval(voice);
 		};
 	});
 
@@ -122,8 +132,9 @@
 			<TourBar {scene} {tour} onleave={() => (scene.tour = null)} />
 		</div>
 	{:else}
-		<p class="note" aria-live="polite">{note}</p>
+		<p class="note">{note}</p>
 	{/if}
+	<p class="visually-hidden" aria-live="polite">{announcement}</p>
 
 	<aside class="strip">
 		<Instruments {scene} />

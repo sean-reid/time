@@ -39,11 +39,11 @@ test('renders a shared scene as an immutable PNG', async ({ request }) => {
 	expect(shared.equals(fallback)).toBe(false);
 });
 
-test('points crawlers at the card for the current scene', async ({ page }) => {
+test('points crawlers at the card for the current scene', async ({ page, baseURL }) => {
 	await page.goto('/');
 	await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
 		'content',
-		'http://localhost:4173/og'
+		`${baseURL}/og`
 	);
 	await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
 		'content',
@@ -52,6 +52,6 @@ test('points crawlers at the card for the current scene', async ({ page }) => {
 	await page.goto('/?s=WyJlYXJ0aCIsMzg3MCwxLDAsW1syLjY1NzFlNywtMC43ODUzOTgsIm8iLDEsMV1dXQ');
 	await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
 		'content',
-		'http://localhost:4173/og?s=WyJlYXJ0aCIsMzg3MCwxLDAsW1syLjY1NzFlNywtMC43ODUzOTgsIm8iLDEsMV1dXQ'
+		`${baseURL}/og?s=WyJlYXJ0aCIsMzg3MCwxLDAsW1syLjY1NzFlNywtMC43ODUzOTgsIm8iLDEsMV1dXQ`
 	);
 });

@@ -77,7 +77,9 @@ export function cardSvg(body: Body, course: Course): string {
 	const field = fieldFor(body);
 	const flight = integrate(field, course);
 	const end = flight.samples[flight.samples.length - 1];
-	const deficit = flight.ending.kind === 'horizon' ? 1 : end.deficit;
+	const inside = field.horizon !== null && end.r <= field.horizon;
+	const stopped = flight.ending.kind === 'horizon' || inside || !Number.isFinite(end.deficit);
+	const deficit = stopped ? 1 : end.deficit;
 	const rate = formatRelativeRate(deficit, earthReferenceDeficit(body.id === 'earth'));
 	const floor = field.horizon === null ? 'surface' : 'horizon';
 	const altitude = end.r - field.surface;

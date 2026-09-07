@@ -57,6 +57,17 @@ describe('share card', () => {
 		expect(svg).toContain('>at the horizon</text>');
 	});
 
+	it('treats a course that starts inside the horizon as stopped', () => {
+		const body = bodyById('gw150914');
+		const field = fieldFor(body);
+		const svg = cardSvg(body, {
+			cruiseSpeed: 1e6,
+			waypoints: [{ r: 0.5 * field.surface, phi: 0, dwell: { kind: 'hover', duration: 1 } }]
+		});
+		expect(svg).toContain('>stopped, as Earth sees it</text>');
+		expect(svg).not.toContain('∞');
+	});
+
 	it('raises superscript exponents the font lacks into tspans', () => {
 		const body = bodyById('gw150914');
 		const field = fieldFor(body);

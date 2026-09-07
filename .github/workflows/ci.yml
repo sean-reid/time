@@ -20,6 +20,7 @@ jobs:
       - run: pnpm check
       - run: pnpm vitest --run
       - run: pnpm build
+      - run: pnpm size
 
   e2e:
     runs-on: ubuntu-latest

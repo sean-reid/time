@@ -2,6 +2,7 @@
 	import { formatDuration, formatLength, formatSpeed } from '$lib/format';
 	import type { Heading } from '$lib/physics';
 	import type { Scene } from '$lib/sim/scene.svelte';
+	import Picker from './Picker.svelte';
 
 	let { scene }: { scene: Scene } = $props();
 
@@ -44,6 +45,26 @@
 		startChoices.find((c) => Math.abs(c.r - scene.plan.start.r) / c.r < 1e-6)?.id ?? 'custom'
 	);
 
+	let startGroups = $derived([
+		{
+			items: [
+				...startChoices.map((c) => ({
+					id: c.id,
+					name: c.label,
+					detail: `${formatLength(c.r - field.surface)} up`
+				})),
+				...(currentStart === 'custom'
+					? [
+							{
+								id: 'custom',
+								name: 'Custom',
+								detail: `${formatLength(scene.plan.start.r - field.surface)} up`
+							}
+						]
+					: [])
+			]
+		}
+	]);
 	function chooseStart(id: string) {
 		const c = startChoices.find((x) => x.id === id);
 		if (c) scene.setStart({ r: c.r });
@@ -60,17 +81,13 @@
 	<h2 id="flight-heading" class="label">Flight</h2>
 
 	<div class="start">
-		<label>
-			<span class="label">Start on</span>
-			<select value={currentStart} onchange={(e) => chooseStart(e.currentTarget.value)}>
-				{#each startChoices as c (c.id)}
-					<option value={c.id}>{c.label}, {formatLength(c.r - field.surface)} up</option>
-				{/each}
-				{#if currentStart === 'custom'}
-					<option value="custom">{formatLength(scene.plan.start.r - field.surface)} up</option>
-				{/if}
-			</select>
-		</label>
+		<Picker
+			label="Start on"
+			value={currentStart}
+			groups={startGroups}
+			onchange={chooseStart}
+			compact
+		/>
 		<div class="row">
 			<button
 				type="button"
@@ -174,23 +191,23 @@
 	}
 	.row {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 6px;
 	}
 	.row.four {
-		grid-template-columns: repeat(2, 1fr);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 	.row button {
 		min-width: 0;
-		padding: 0 4px;
+		padding: 4px;
 		font-size: 13px;
 		line-height: 1.2;
+		overflow-wrap: anywhere;
 	}
 	label {
 		display: grid;
 		gap: 4px;
 	}
-	select,
 	input {
 		font: inherit;
 		color: inherit;
@@ -215,7 +232,7 @@
 	}
 	.manoeuvres li {
 		display: grid;
-		grid-template-columns: 7ch 1fr 44px;
+		grid-template-columns: 7ch minmax(0, 1fr) 44px;
 		align-items: center;
 		gap: 8px;
 		border-bottom: var(--hair) solid var(--rule);

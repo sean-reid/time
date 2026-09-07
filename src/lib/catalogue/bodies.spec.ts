@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bodies, bodyById } from './index';
-import type { Body, Quantity } from './types';
+import type { Body, Companion, Quantity } from './types';
 
 const G = 6.6743e-11;
 const c = 299792458;
@@ -17,6 +17,12 @@ function quantities(body: Body): Quantity[] {
 }
 
 const all: readonly Body[] = bodies;
+const AU = 149597870700;
+const withCompanions = all.filter((b) => (b.companions?.length ?? 0) > 0);
+
+function companionQuantities(c: Companion): Quantity[] {
+	return [c.semiMajorAxis, c.eccentricity, c.period, c.argumentOfPeriapsis, c.meanAnomalyAtEpoch];
+}
 
 function kindRank(b: Body): number {
 	return b.kind === 'black-hole' ? 2 : ['star', 'planet', 'moon'].includes(b.kind) ? 0 : 1;
@@ -113,6 +119,96 @@ describe('catalogue', () => {
 				expect(all.indexOf(bodyById(companion.body))).toBe(all.indexOf(body) + 1);
 			}
 		}
+	});
+
+	it('gives every scene a companion that exists in the catalogue', () => {
+		expect(withCompanions.map((b) => b.id)).toEqual([
+			'sun',
+			'earth',
+			'moon',
+			'sirius-b',
+			'psr-j0348-0432',
+			'cygnus-x-1',
+			'sgr-a-star'
+		]);
+		for (const body of withCompanions) {
+			for (const c of body.companions ?? []) {
+				expect(c.body).not.toBe(body.id);
+				expect(bodyById(c.body).id).toBe(c.body);
+			}
+		}
+	});
+
+	it('cites a labelled http(s) source on every companion element, in SI', () => {
+		for (const body of withCompanions) {
+			for (const c of body.companions ?? []) {
+				for (const q of companionQuantities(c)) {
+					expect(Number.isFinite(q.value)).toBe(true);
+					expect(q.source.label.trim()).not.toBe('');
+					expect(q.source.url).toMatch(/^https?:\/\/\S+$/);
+				}
+				expect(c.semiMajorAxis.unit).toBe('m');
+				expect(c.period.unit).toBe('s');
+				expect(c.eccentricity.unit).toBe('1');
+				expect(c.argumentOfPeriapsis.unit).toBe('1');
+				expect(c.meanAnomalyAtEpoch.unit).toBe('1');
+			}
+		}
+	});
+
+	it('keeps companion elements in range', () => {
+		for (const body of withCompanions) {
+			for (const c of body.companions ?? []) {
+				expect(c.semiMajorAxis.value).toBeGreaterThan(0);
+				expect(c.period.value).toBeGreaterThan(0);
+				expect(c.eccentricity.value).toBeGreaterThanOrEqual(0);
+				expect(c.eccentricity.value).toBeLessThan(1);
+				for (const angle of [c.argumentOfPeriapsis, c.meanAnomalyAtEpoch]) {
+					expect(angle.value).toBeGreaterThanOrEqual(0);
+					expect(angle.value).toBeLessThan(2 * Math.PI);
+					if (angle.value === 0) expect(angle.note).toBeDefined();
+				}
+			}
+		}
+	});
+
+	it("satisfies Kepler's third law within 5 percent for every companion", () => {
+		for (const body of withCompanions) {
+			for (const c of body.companions ?? []) {
+				const total = body.mass.value + bodyById(c.body).mass.value;
+				const kepler = 2 * Math.PI * Math.sqrt(c.semiMajorAxis.value ** 3 / (G * total));
+				expect(Math.abs(c.period.value / kepler - 1)).toBeLessThan(0.05);
+			}
+		}
+	});
+
+	it('gives the Sun five companions in increasing semi-major axis', () => {
+		const companions = bodyById('sun').companions ?? [];
+		expect(companions.map((c) => c.body)).toEqual(['mercury', 'venus', 'earth', 'mars', 'jupiter']);
+		for (let i = 1; i < companions.length; i++) {
+			expect(companions[i].semiMajorAxis.value).toBeGreaterThan(
+				companions[i - 1].semiMajorAxis.value
+			);
+		}
+	});
+
+	it('matches reference elements for Earth, the Moon and S2', () => {
+		const earth = bodyById('sun').companions?.find((c) => c.body === 'earth');
+		expect(Math.abs((earth?.semiMajorAxis.value ?? 0) / AU - 1)).toBeLessThan(1e-4);
+		expect(Math.abs((earth?.period.value ?? 0) / 31558150 - 1)).toBeLessThan(1e-5);
+		expect(((earth?.argumentOfPeriapsis.value ?? 0) * 180) / Math.PI).toBeCloseTo(102.93768, 4);
+		expect(((earth?.meanAnomalyAtEpoch.value ?? 0) * 180) / Math.PI).toBeCloseTo(357.52689, 4);
+
+		const moon = bodyById('earth').companions?.[0];
+		const back = bodyById('moon').companions?.[0];
+		expect(moon?.semiMajorAxis.value).toBe(384400e3);
+		expect(back?.semiMajorAxis.value).toBe(moon?.semiMajorAxis.value);
+		expect(back?.period.value).toBe(moon?.period.value);
+
+		const s2 = bodyById('sgr-a-star').companions?.[0];
+		expect(Math.abs((s2?.semiMajorAxis.value ?? 0) / (1031.3 * AU) - 1)).toBeLessThan(1e-3);
+		expect(Math.abs((s2?.period.value ?? 0) / (16.0455 * 365.25 * 86400) - 1)).toBeLessThan(1e-9);
+		expect(((s2?.meanAnomalyAtEpoch.value ?? 0) * 180) / Math.PI).toBeCloseTo(307.64, 1);
 	});
 
 	it('throws on an unknown id', () => {

@@ -1,0 +1,78 @@
+@font-face {
+	font-family: 'Schibsted Grotesk';
+	font-style: normal;
+	font-weight: 400 900;
+	font-display: swap;
+	src: url('/fonts/schibsted-grotesk-latin.woff2') format('woff2');
+}
+
+:root {
+	--paper: #f5f2eb;
+	--ink: #16150f;
+	--ink-soft: #5f5b52;
+	--ink-faint: #8f8a7f;
+	--rule: #cfc9bc;
+	--grid: #e6e1d6;
+	--accent: #b23a1d;
+	--font: 'Schibsted Grotesk', system-ui, sans-serif;
+	--hair: 0.75px;
+	--strip-w: 304px;
+	color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--font);
+	font-size: 15px;
+	line-height: 1.4;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+.num {
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum';
+}
+
+.label {
+	font-size: 11px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: var(--hair) solid var(--ink);
+	border-radius: 0;
+	padding: 0 14px;
+	min-height: 44px;
+	cursor: pointer;
+}
+
+button:hover {
+	background: var(--ink);
+	color: var(--paper);
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}

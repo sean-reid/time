@@ -8,5 +8,6 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
+	"routes": [{ "pattern": "time.dwainosaur.com", "custom_domain": true }],
 	"observability": { "enabled": true }
 }

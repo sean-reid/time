@@ -10,7 +10,8 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			adapter: adapter({ platformProxy: { persist: false } })
+			adapter: adapter({ platformProxy: { persist: false } }),
+			inlineStyleThreshold: 24_000
 		})
 	],
 	build: { rolldownOptions: { external: ['@resvg/resvg-wasm/index_bg.wasm'] } },

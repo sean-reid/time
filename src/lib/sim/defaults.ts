@@ -1,6 +1,15 @@
-import type { Body } from '$lib/catalogue';
-import { makeField, type Field, type FieldSource, type Plan, type Space } from '$lib/physics';
-import { J2000_MS } from '$lib/physics';
+import { bodyById, type Body, type Companion } from '$lib/catalogue';
+import {
+	G,
+	J2000_MS,
+	makeField,
+	type Attractor,
+	type Elements,
+	type Field,
+	type FieldSource,
+	type Plan,
+	type Space
+} from '$lib/physics';
 
 export function fieldSource(body: Body): FieldSource {
 	return { mass: body.mass.value, spin: body.spin?.value, radius: body.radius?.value };
@@ -22,11 +31,34 @@ export function epochSeconds(wallMs: number): number {
 	return (wallMs - J2000_MS) / 1000;
 }
 
+export function elementsOf(c: Companion): Elements {
+	return {
+		a: c.semiMajorAxis.value,
+		e: c.eccentricity.value,
+		period: c.period.value,
+		omega: c.argumentOfPeriapsis.value,
+		m0: c.meanAnomalyAtEpoch.value
+	};
+}
+
+/** Companions pull on the ship only in the Newtonian regime; near compact bodies they are scenery. */
+export function attractorsFor(body: Body): Attractor[] {
+	if (regimeFor(body) === 'geodesic') return [];
+	return (body.companions ?? []).map((c) => {
+		const partner = bodyById(c.body);
+		return {
+			mu: G * partner.mass.value,
+			radius: partner.radius?.value ?? 0,
+			elements: elementsOf(c)
+		};
+	});
+}
+
 export function spaceFor(body: Body, wallMs: number): Space {
 	return {
 		field: fieldFor(body),
 		regime: regimeFor(body),
-		attractors: [],
+		attractors: attractorsFor(body),
 		epoch: epochSeconds(wallMs)
 	};
 }

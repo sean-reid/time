@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { formatLength, formatPercent } from '$lib/format';
-	import { C, schwarzschildRadius } from '$lib/physics';
+	import { C, keplerState, schwarzschildRadius } from '$lib/physics';
+	import { bodyById } from '$lib/catalogue';
+	import { elementsOf, epochSeconds } from '$lib/sim/defaults';
 	import type { Scene } from '$lib/sim/scene.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import Grid from './Grid.svelte';
@@ -91,13 +93,37 @@
 		return keep;
 	});
 
+	/** Companions where they really are now, with the ellipse each one follows. */
+	let companions = $derived.by(() => {
+		const since = epochSeconds(scene.departedAt) + scene.t;
+		return (scene.body.companions ?? []).map((c) => {
+			const partner = bodyById(c.body);
+			const el = elementsOf(c);
+			const now = keplerState(el, since);
+			let d = '';
+			for (let i = 0; i <= 180; i++) {
+				const p = keplerState(el, (el.period * i) / 180);
+				d += `${i === 0 ? 'M' : 'L'}${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`;
+			}
+			return {
+				name: partner.name,
+				radius: partner.radius?.value ?? 0,
+				x: now.x,
+				y: now.y,
+				path: d
+			};
+		});
+	});
+
 	let barMetres = $derived(10 ** Math.floor(Math.log10(mpp * 160)));
 	let lightLabel = $derived.by(() => {
 		const s = barMetres / C;
-		if (s < 1) return `${(s * 1000).toPrecision(2)} ms of light`;
-		if (s < 60) return `${s.toPrecision(2)} s of light`;
-		if (s < 3600) return `${(s / 60).toPrecision(2)} min of light`;
-		return `${(s / 3600).toPrecision(2)} h of light`;
+		const two = (x: number) =>
+			x >= 100 ? String(Math.round(x)) : String(Number(x.toPrecision(2)));
+		if (s < 1) return `${two(s * 1000)} ms of light`;
+		if (s < 60) return `${two(s)} s of light`;
+		if (s < 3600) return `${two(s / 60)} min of light`;
+		return `${two(s / 3600)} h of light`;
 	});
 
 	let heading = $derived.by(() => {
@@ -204,6 +230,7 @@
 	let lastPinch = 0;
 
 	function onPointerDown(e: PointerEvent) {
+		if ((e.target as HTMLElement).closest('button')) return;
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
 		if (pointers.size === 2) lastPinch = pinchDistance();
@@ -286,14 +313,20 @@
 			{/if}
 		{/each}
 
-		{#if px(field.surface) >= 1.5}
-			<circle cx={sx(0)} cy={sy(0)} r={px(field.surface)} class="body" />
-		{:else}
-			<circle cx={sx(0)} cy={sy(0)} r="1.5" class="body" />
-		{/if}
+		<circle cx={sx(0)} cy={sy(0)} r={Math.max(1.5, px(field.surface))} class="body central" />
 		<text x={sx(0) + Math.max(px(field.surface), 1.5) + 8} y={sy(0) + 4} class="tag">
 			{scene.body.name}
 		</text>
+
+		{#each companions as c (c.name)}
+			{#if visibleRing(Math.hypot(c.x, c.y))}
+				<path d={c.path} class="orbit" />
+				<circle cx={sx(c.x)} cy={sy(c.y)} r={Math.max(1.5, px(c.radius))} class="body" />
+				<text x={sx(c.x) + Math.max(1.5, px(c.radius)) + 6} y={sy(c.y) + 4} class="tag"
+					>{c.name}</text
+				>
+			{/if}
+		{/each}
 
 		<path d={trail} class="course" />
 		{#each marks as m, i (i)}
@@ -346,6 +379,11 @@
 		fill: none;
 		stroke: var(--ink);
 		stroke-width: 0.75;
+	}
+	.orbit {
+		fill: none;
+		stroke: var(--ink-faint);
+		stroke-width: 0.5;
 	}
 	.iso {
 		fill: none;

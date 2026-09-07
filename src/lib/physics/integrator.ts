@@ -50,14 +50,17 @@ export function integrate(field: Field, course: Course): Flight {
 	let tau = 0;
 	let segment = 0;
 	const first = wps[0];
+	const orbiting = first.dwell?.kind === 'orbit' ? first.dwell : null;
 	push(samples, {
 		t,
 		tau,
 		r: first.r,
 		phi: first.phi,
-		deficit: field.hoverDeficit(first.r),
-		speed: 0,
-		thrust: field.hoverAcceleration(first.r),
+		deficit: orbiting
+			? field.orbitDeficit(first.r, orbiting.direction)
+			: field.hoverDeficit(first.r),
+		speed: orbiting ? field.orbitLocalSpeed(first.r) : 0,
+		thrust: orbiting ? 0 : field.hoverAcceleration(first.r),
 		segment
 	});
 

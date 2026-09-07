@@ -94,6 +94,21 @@ describe('integrate', () => {
 		expect(f.ending.kind).toBe('complete');
 	});
 
+	it('leaves an orbit from where the orbit ends', () => {
+		const r = 26_560e3;
+		const f = integrate(earth, {
+			waypoints: [
+				{ r, phi: 0, dwell: { kind: 'orbit', revolutions: 0.5, direction: 1 } },
+				{ r: 2 * r, phi: Math.PI }
+			],
+			cruiseSpeed: 1e4
+		});
+		const period = circularOrbitPeriod(earth.mass, r);
+		const justAfter = f.stateAt(period / 2 + 1);
+		expect(Math.cos(justAfter.phi)).toBeCloseTo(-1, 3);
+		expect(justAfter.r).toBeGreaterThan(r);
+	});
+
 	it('interpolates state between samples', () => {
 		const f = integrate(earth, {
 			waypoints: [{ r: 7e6, phi: 0, dwell: { kind: 'hover', duration: 100 } }],

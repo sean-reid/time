@@ -10,7 +10,7 @@
 	import { Ticker } from '$lib/sim/ticker';
 	import { encodeScene } from '$lib/sim/url';
 	import { tourById } from '$lib/tours';
-	import CoursePanel from '$lib/ui/CoursePanel.svelte';
+	import FlightPanel from '$lib/ui/FlightPanel.svelte';
 	import Instruments from '$lib/ui/Instruments.svelte';
 	import TourBar from '$lib/ui/TourBar.svelte';
 
@@ -85,7 +85,7 @@
 			? `/?tour=${scene.tour}`
 			: `/?s=${encodeScene({
 					body: scene.body.id,
-					course: scene.course,
+					plan: scene.plan,
 					warp: scene.warp,
 					t: 0,
 					camera: scene.camera
@@ -138,7 +138,7 @@
 
 	<aside class="strip">
 		<Instruments {scene} />
-		<CoursePanel {scene} />
+		<FlightPanel {scene} />
 	</aside>
 </main>
 

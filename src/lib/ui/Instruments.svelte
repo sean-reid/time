@@ -17,17 +17,12 @@
 	let status = $derived.by(() => {
 		const s = scene.ship;
 		switch (s.phase) {
-			case 'orbiting': {
-				const wp = scene.course.waypoints.find(
-					(w) => w.dwell?.kind === 'orbit' && Math.abs(w.r - s.r) < 1
-				);
-				const dir = wp?.dwell?.kind === 'orbit' ? wp.dwell.direction : 1;
-				return `orbiting, ${formatDuration(scene.field.orbitPeriod(s.r, dir))} per revolution`;
-			}
+			case 'orbiting':
+				return `free fall, ${formatDuration(scene.field.orbitPeriod(s.r, scene.plan.start.direction))} per revolution`;
+			case 'coasting':
+				return 'free fall';
 			case 'holding':
 				return 'holding station';
-			case 'cruising':
-				return 'under way';
 			case 'landed':
 				return 'landed';
 			case 'horizon':

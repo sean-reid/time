@@ -5,3 +5,6 @@ export * from './earth';
 export * from './field';
 export * from './course';
 export * from './integrator';
+export * from './kepler';
+export * from './geodesic';
+export * from './trajectory';

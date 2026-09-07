@@ -129,8 +129,7 @@ export function stepGeodesic(
 		hCap,
 		0.02 / Math.max(Math.abs(k1[2]), 1e-12),
 		(0.002 * s.r) / Math.max(Math.abs(k1[3]), 1e-12),
-		(0.05 * gap) / Math.max(Math.abs(k1[3]), 1e-12),
-		(0.05 * gap) / Math.max(Math.abs(k1[0]) * 1e-3, 1e-12)
+		(0.05 * gap) / Math.max(Math.abs(k1[3]), 1e-12)
 	);
 	const add = (y: number[], k: number[], f: number) => y.map((v, i) => v + f * k[i]);
 	const k2 = deriv(add(y0, k1, h / 2));

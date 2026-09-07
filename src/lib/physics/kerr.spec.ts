@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { M_SUN } from './constants';
+import { makeField } from './field';
 import {
 	gravitationalRadius,
 	kerrHoverAcceleration,
@@ -51,6 +52,14 @@ describe('Kerr', () => {
 		expect(kerrOrbitDeficit(M, 0.9, r, 1)).toBeCloseTo(0.2566, 3);
 		expect(kerrOrbitDeficit(M, 0.9, r, -1)).toBeCloseTo(0.3455, 3);
 		expect(kerrOrbitPeriod(M, 0.9, r, 1)).toBeGreaterThan(kerrOrbitPeriod(M, 0.9, r, -1));
+	});
+
+	it('stretches radial distance toward the Kerr horizon, not the Schwarzschild radius', () => {
+		const f = makeField({ mass: M, spin: 0.9 });
+		const plain = makeField({ mass: M });
+		expect(f.radialStretch(1000 * m) / plain.radialStretch(1000 * m)).toBeCloseTo(1, 6);
+		expect(f.radialStretch(1.6 * m)).toBeLessThan(10);
+		expect(f.radialStretch(f.surface * 1.0001)).toBeGreaterThan(50);
 	});
 
 	it('lets a hovering ship reach inside the ergosphere of a spinning hole', () => {

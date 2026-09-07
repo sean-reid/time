@@ -10,7 +10,7 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			adapter: adapter()
+			adapter: adapter({ platformProxy: { persist: false } })
 		})
 	],
 	test: {

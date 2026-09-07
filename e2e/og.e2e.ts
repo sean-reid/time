@@ -21,11 +21,9 @@ test('renders the default card as a PNG', async ({ request }) => {
 test('renders a shared scene as an immutable PNG', async ({ request }) => {
 	const s = encodeScene({
 		body: 'sgr-a-star',
-		course: {
-			cruiseSpeed: 3e7,
-			waypoints: [
-				{ r: 1e11, phi: -0.785398, dwell: { kind: 'orbit', revolutions: 1, direction: 1 } }
-			]
+		plan: {
+			start: { r: 3e10, phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: [{ at: 60, kind: 'kick', dv: 3e7, heading: 'retrograde' }]
 		},
 		warp: 60,
 		t: 0

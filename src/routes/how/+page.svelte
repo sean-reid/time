@@ -115,10 +115,29 @@
 
 	<h2 class="label">What the ship can do</h2>
 	<p>
-		Hold station anywhere. The engine never runs out; the panel shows the thrust that takes, in g,
-		and it grows without bound at a horizon. Circle a body on a circular orbit, prograde or
-		retrograde. Move between waypoints at a fixed speed relative to observers holding station.
-		Nothing can hold station inside a horizon, so a course that crosses one ends there.
+		Start on a circular orbit, prograde or retrograde, or hold station. From then on the ship is in
+		free fall unless you act. A kick changes its speed at once by a chosen fraction of its current
+		speed, prograde, retrograde, outward or inward, as measured by observers holding station where
+		the ship is. Holding station stops the ship dead and keeps it there; the panel shows the thrust
+		that takes, in g, which grows without bound at a horizon. Letting go drops it from rest.
+	</p>
+	<p>
+		Around black holes, neutron stars, magnetars and white dwarfs the ship follows exact equatorial
+		geodesics of the Kerr metric, Schwarzschild when the spin is zero. Around the Sun, planets and
+		moons it moves under Newtonian gravity from the central body and its companions, and its clock
+		runs at the post-Newtonian rate: one, minus the summed potentials over
+		<math><msup><mi>c</mi><mn>2</mn></msup></math>, minus
+		<math
+			><mfrac
+				><msup><mi>v</mi><mn>2</mn></msup><mrow><mn>2</mn><msup><mi>c</mi><mn>2</mn></msup></mrow
+				></mfrac
+			></math
+		>. That is exact to far beyond what the display can show.
+	</p>
+	<p>
+		Companions move on their real Kepler ellipses from published elements, placed where they are
+		today. Their orbits are drawn in the plane of the plate; inclinations are ignored. Near compact
+		bodies the companions are scenery and do not pull on the ship.
 	</p>
 
 	<h2 class="label">Landmarks around a black hole</h2>

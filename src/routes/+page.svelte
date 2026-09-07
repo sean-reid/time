@@ -3,14 +3,14 @@
 	import { resolve } from '$app/paths';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import { bodies } from '$lib/catalogue';
 	import { formatDrift, formatRelativeRate } from '$lib/format';
 	import Plate from '$lib/plate/Plate.svelte';
 	import { Scene } from '$lib/sim/scene.svelte';
 	import { Ticker } from '$lib/sim/ticker';
 	import { encodeScene } from '$lib/sim/url';
 	import { tourById } from '$lib/tours';
-	import CoursePanel from '$lib/ui/CoursePanel.svelte';
+	import FlightPanel from '$lib/ui/FlightPanel.svelte';
+	import BodyPicker from '$lib/ui/BodyPicker.svelte';
 	import Instruments from '$lib/ui/Instruments.svelte';
 	import TourBar from '$lib/ui/TourBar.svelte';
 
@@ -85,7 +85,7 @@
 			? `/?tour=${scene.tour}`
 			: `/?s=${encodeScene({
 					body: scene.body.id,
-					course: scene.course,
+					plan: scene.plan,
 					warp: scene.warp,
 					t: 0,
 					camera: scene.camera
@@ -110,14 +110,9 @@
 <main class="app">
 	<header class="bar">
 		<a href={resolve('/')} class="wordmark">time</a>
-		<label class="pick">
-			<span class="label">Near</span>
-			<select value={scene.body.id} onchange={(e) => scene.setBody(e.currentTarget.value)}>
-				{#each bodies as b (b.id)}
-					<option value={b.id}>{b.name}</option>
-				{/each}
-			</select>
-		</label>
+		<div class="pick">
+			<BodyPicker value={scene.body} onchange={(id) => scene.setBody(id)} />
+		</div>
 		<nav>
 			<a href={resolve('/tours')}>Tours</a>
 			<a href={resolve('/how')}>How this works</a>
@@ -138,7 +133,7 @@
 
 	<aside class="strip">
 		<Instruments {scene} />
-		<CoursePanel {scene} />
+		<FlightPanel {scene} />
 	</aside>
 </main>
 
@@ -180,15 +175,6 @@
 		display: grid;
 		gap: 2px;
 	}
-	select {
-		font: inherit;
-		color: inherit;
-		background: var(--paper);
-		border: var(--hair) solid var(--ink);
-		border-radius: 0;
-		min-height: 44px;
-		padding: 0 10px;
-	}
 	.view {
 		grid-area: view;
 		position: relative;
@@ -215,6 +201,7 @@
 		gap: 24px;
 		padding: 8px 20px 20px;
 		overflow-y: auto;
+		overflow-x: hidden;
 	}
 
 	@media (max-width: 899px) {
@@ -235,9 +222,6 @@
 			grid-template-columns: auto 1fr;
 			align-items: center;
 			gap: 8px;
-		}
-		select {
-			min-height: 40px;
 		}
 		.view {
 			border-left: 0;

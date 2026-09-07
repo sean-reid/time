@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { formatLength, formatPercent } from '$lib/format';
-	import { C, dwellEnd, schwarzschildRadius, waypointXY } from '$lib/physics';
+	import { C, keplerState, schwarzschildRadius } from '$lib/physics';
+	import { bodyById } from '$lib/catalogue';
+	import { elementsOf, epochSeconds } from '$lib/sim/defaults';
 	import type { Scene } from '$lib/sim/scene.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import Grid from './Grid.svelte';
@@ -14,11 +16,14 @@
 
 	const ISOCHRONES = [0.9, 0.5, 0.1, 0.01];
 
+	function polarXY(p: { r: number; phi: number }) {
+		return { x: p.r * Math.cos(p.phi), y: p.r * Math.sin(p.phi) };
+	}
 	let reducedMotion = $state(false);
 	let shownShip = $state({ x: 0, y: 0 });
 	let lastShown = 0;
 	$effect(() => {
-		const xy = waypointXY(scene.ship);
+		const xy = polarXY(scene.ship);
 		if (!reducedMotion) {
 			shownShip = xy;
 			return;
@@ -88,23 +93,62 @@
 		return keep;
 	});
 
+	/** Companions where they really are now, with the ellipse each one follows. */
+	let companions = $derived.by(() => {
+		const since = epochSeconds(scene.departedAt) + scene.t;
+		return (scene.body.companions ?? []).map((c) => {
+			const partner = bodyById(c.body);
+			const el = elementsOf(c);
+			const now = keplerState(el, since);
+			let d = '';
+			for (let i = 0; i <= 180; i++) {
+				const p = keplerState(el, (el.period * i) / 180);
+				d += `${i === 0 ? 'M' : 'L'}${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`;
+			}
+			return {
+				name: partner.name,
+				radius: partner.radius?.value ?? 0,
+				x: now.x,
+				y: now.y,
+				path: d
+			};
+		});
+	});
+
 	let barMetres = $derived(10 ** Math.floor(Math.log10(mpp * 160)));
 	let lightLabel = $derived.by(() => {
 		const s = barMetres / C;
-		if (s < 1) return `${(s * 1000).toPrecision(2)} ms of light`;
-		if (s < 60) return `${s.toPrecision(2)} s of light`;
-		if (s < 3600) return `${(s / 60).toPrecision(2)} min of light`;
-		return `${(s / 3600).toPrecision(2)} h of light`;
+		const two = (x: number) =>
+			x >= 100 ? String(Math.round(x)) : String(Number(x.toPrecision(2)));
+		if (s < 1) return `${two(s * 1000)} ms of light`;
+		if (s < 60) return `${two(s)} s of light`;
+		if (s < 3600) return `${two(s / 60)} min of light`;
+		return `${two(s / 3600)} h of light`;
 	});
 
 	let heading = $derived.by(() => {
-		const a = scene.stateAt(Math.max(0, scene.t - 1e-3 * Math.max(1, scene.warp)));
-		const b = scene.ship;
-		const ax = waypointXY(a);
-		const bx = waypointXY(b);
-		const ang = Math.atan2(-(bx.y - ax.y), bx.x - ax.x);
+		const a = scene.trajectory.stateAt(Math.max(0, scene.t - 1e-3 * Math.max(1, scene.warp)));
+		const ax = polarXY(a);
+		const bx = polarXY(scene.ship);
+		const ang = Math.atan2(bx.y - ax.y, bx.x - ax.x);
 		return Number.isFinite(ang) ? (ang * 180) / Math.PI : 0;
 	});
+
+	/** The flown and computed path, thinned to at most 1500 points, in screen space. */
+	let trail = $derived.by(() => {
+		const pts = scene.trajectory.samples;
+		const step = Math.max(1, Math.ceil(pts.length / 1500));
+		let d = '';
+		for (let i = 0; i < pts.length; i += step) {
+			const p = polarXY(pts[i]);
+			d += `${i === 0 ? 'M' : 'L'}${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`;
+		}
+		return d;
+	});
+
+	let marks = $derived(
+		scene.plan.manoeuvres.map((m) => ({ ...polarXY(scene.trajectory.stateAt(m.at)), kind: m.kind }))
+	);
 
 	function observe(node: HTMLElement) {
 		const ro = new ResizeObserver(([e]) => {
@@ -184,42 +228,12 @@
 
 	const pointers = new SvelteMap<number, { x: number; y: number }>();
 	let lastPinch = 0;
-	let dragging: number | null = null;
-	let pressed: { x: number; y: number; moved: boolean } | null = null;
-
-	let snapTo = $derived([
-		...rings.map((r) => r.r),
-		...isochrones.map((i) => i.r),
-		...scene.course.waypoints.filter((w) => w.dwell?.kind === 'orbit').map((w) => w.r)
-	]);
-
-	function worldAt(x: number, y: number) {
-		return { x: centre.x + (x - w / 2) * mpp, y: centre.y - (y - h / 2) * mpp };
-	}
-	function waypointAt(x: number, y: number, touch = false): number | null {
-		let best: number | null = null;
-		let bestD = touch ? 22 : 14;
-		scene.course.waypoints.forEach((wp, i) => {
-			const p = waypointXY(wp);
-			const d = Math.hypot(sx(p.x) - x, sy(p.y) - y);
-			if (d < bestD) {
-				best = i;
-				bestD = d;
-			}
-		});
-		return best;
-	}
 
 	function onPointerDown(e: PointerEvent) {
+		if ((e.target as HTMLElement).closest('button')) return;
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
-		if (pointers.size === 2) {
-			lastPinch = pinchDistance();
-			dragging = null;
-			return;
-		}
-		pressed = { x: e.offsetX, y: e.offsetY, moved: false };
-		dragging = scene.plotting ? waypointAt(e.offsetX, e.offsetY, e.pointerType === 'touch') : null;
+		if (pointers.size === 2) lastPinch = pinchDistance();
 	}
 	function pinchDistance() {
 		const [a, b] = [...pointers.values()];
@@ -240,12 +254,6 @@
 			return;
 		}
 		if (e.buttons === 0) return;
-		if (pressed && Math.hypot(cur.x - pressed.x, cur.y - pressed.y) > 4) pressed.moved = true;
-		if (dragging !== null) {
-			const wp = worldAt(cur.x, cur.y);
-			scene.moveWaypoint(dragging, wp.x, wp.y, snapTo, 12 * mpp);
-			return;
-		}
 		scene.camera = {
 			frame: scene.camera.frame,
 			cx: centre.x - (cur.x - prev.x) * mpp,
@@ -256,19 +264,6 @@
 	function onPointerUp(e: PointerEvent) {
 		pointers.delete(e.pointerId);
 		if (pointers.size < 2) lastPinch = 0;
-		if (pressed && !pressed.moved && scene.plotting) {
-			const hit = waypointAt(e.offsetX, e.offsetY, e.pointerType === 'touch');
-			if (hit !== null) scene.selected = hit;
-			else {
-				const wp = worldAt(e.offsetX, e.offsetY);
-				scene.addWaypointAt(wp.x, wp.y);
-			}
-		} else if (pressed && !pressed.moved && dragging === null) {
-			scene.selected = null;
-		}
-		if (dragging !== null) scene.selected = dragging;
-		dragging = null;
-		pressed = null;
 	}
 
 	function recentre() {
@@ -282,14 +277,11 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
 	class="plate"
-	class:plotting={scene.plotting}
 	role="application"
 	tabindex="0"
 	onkeydown={onKey}
 	aria-label="Map of {scene.body
-		.name}. Drag or use arrow keys to pan, scroll, pinch or press plus and minus to zoom, c to centre, f to follow the ship.{scene.plotting
-		? ' Tap to add a waypoint, drag one to move it.'
-		: ''}"
+		.name}. Drag or use arrow keys to pan, scroll, pinch or press plus and minus to zoom, c to centre, f to follow the ship."
 	use:observe
 	onwheel={onWheel}
 	onpointerdown={onPointerDown}
@@ -321,35 +313,26 @@
 			{/if}
 		{/each}
 
-		{#if px(field.surface) >= 1.5}
-			<circle cx={sx(0)} cy={sy(0)} r={px(field.surface)} class="body" />
-		{:else}
-			<circle cx={sx(0)} cy={sy(0)} r="1.5" class="body" />
-		{/if}
+		<circle cx={sx(0)} cy={sy(0)} r={Math.max(1.5, px(field.surface))} class="body central" />
 		<text x={sx(0) + Math.max(px(field.surface), 1.5) + 8} y={sy(0) + 4} class="tag">
 			{scene.body.name}
 		</text>
 
-		{#each scene.course.waypoints as wp, i (i)}
-			{@const p = waypointXY(wp)}
-			{#if wp.dwell?.kind === 'orbit'}
-				<circle cx={sx(0)} cy={sy(0)} r={px(wp.r)} class="course" />
+		{#each companions as c (c.name)}
+			{#if visibleRing(Math.hypot(c.x, c.y))}
+				<path d={c.path} class="orbit" />
+				<circle cx={sx(c.x)} cy={sy(c.y)} r={Math.max(1.5, px(c.radius))} class="body" />
+				{#if Math.hypot(sx(c.x) - sx(shipXY.x), sy(c.y) - sy(shipXY.y)) > 40}
+					<text x={sx(c.x) + Math.max(1.5, px(c.radius)) + 6} y={sy(c.y) + 4} class="tag"
+						>{c.name}</text
+					>
+				{/if}
 			{/if}
-			{#if i < scene.course.waypoints.length - 1}
-				{@const from = waypointXY(dwellEnd(wp))}
-				{@const q = waypointXY(scene.course.waypoints[i + 1])}
-				<line x1={sx(from.x)} y1={sy(from.y)} x2={sx(q.x)} y2={sy(q.y)} class="course" />
-			{/if}
-			<circle
-				cx={sx(p.x)}
-				cy={sy(p.y)}
-				r={scene.selected === i ? 6 : 3.5}
-				class="waypoint"
-				class:selected={scene.selected === i}
-			/>
-			{#if scene.plotting}
-				<text x={sx(p.x) + 8} y={sy(p.y) - 6} class="tag accent">{i + 1}</text>
-			{/if}
+		{/each}
+
+		<path d={trail} class="course" />
+		{#each marks as m, i (i)}
+			<circle cx={sx(m.x)} cy={sy(m.y)} r="3.5" class="mark" class:hold={m.kind === 'hold'} />
 		{/each}
 
 		<g transform="translate({sx(shipXY.x)} {sy(shipXY.y)}) rotate({-heading})">
@@ -399,6 +382,11 @@
 		stroke: var(--ink);
 		stroke-width: 0.75;
 	}
+	.orbit {
+		fill: none;
+		stroke: var(--ink-faint);
+		stroke-width: 0.5;
+	}
 	.iso {
 		fill: none;
 		stroke: var(--ink-faint);
@@ -410,16 +398,13 @@
 		stroke: var(--accent);
 		stroke-width: 0.75;
 	}
-	.waypoint {
+	.mark {
 		fill: var(--paper);
 		stroke: var(--accent);
 		stroke-width: 1.2;
 	}
-	.waypoint.selected {
+	.mark.hold {
 		fill: var(--accent);
-	}
-	.plate.plotting {
-		cursor: crosshair;
 	}
 	.ship {
 		fill: var(--accent);

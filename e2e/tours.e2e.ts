@@ -6,17 +6,19 @@ test('the tours page lists four flights that open in the sim', async ({ page }) 
 	await expect(links).toHaveCount(4);
 	await links.first().click();
 	await expect(page).toHaveURL(/tour=gps/);
-	await expect(page.getByText('Why GPS corrects its clocks, stop 1 of 3')).toBeVisible();
+	await expect(page.getByText('Why GPS corrects its clocks, stop 1 of 4')).toBeVisible();
 	await expect(page.getByText(/GPS constellation's orbit/)).toBeVisible();
 });
 
 test('next stop advances the flight and leaving returns to a plain scene', async ({ page }) => {
 	await page.goto('/?tour=sgr-a-star');
+	await page.getByRole('button', { name: 'Pause' }).click();
 	await page.getByRole('button', { name: 'Next stop' }).click();
-	await expect(page.getByText(/stop 2 of 4/)).toBeVisible();
+	await expect(page.getByText(/stop 2 of 5/)).toBeVisible();
 	await page.getByRole('button', { name: 'Next stop' }).click();
 	await page.getByRole('button', { name: 'Next stop' }).click();
-	await expect(page.getByText(/crossed the horizon/)).toBeVisible();
+	await page.getByRole('button', { name: 'Next stop' }).click();
+	await expect(page.getByText(/crossed the horizon/)).toBeVisible({ timeout: 15_000 });
 	await page.getByRole('button', { name: 'Leave the tour' }).click();
 	await expect(page).toHaveURL(/\?s=/);
 });

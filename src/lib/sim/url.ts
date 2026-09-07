@@ -1,36 +1,39 @@
-import type { Course, Waypoint } from '$lib/physics';
+import type { Heading, Manoeuvre, Plan } from '$lib/physics';
 
 export interface SceneSnapshot {
 	body: string;
-	course: Course;
+	plan: Plan;
 	warp: number;
 	/** Coordinate seconds into the flight. */
 	t: number;
 	camera?: { frame: number; cx: number; cy: number; follow: boolean };
 }
 
+const HEADINGS: Heading[] = ['prograde', 'retrograde', 'outward', 'inward'];
+
+type PackedManoeuvre = [number, 'k', number, number] | [number, 'h', number];
 type Packed = [
 	string,
+	[number, number, 'o' | 'h', 1 | -1],
+	PackedManoeuvre[],
 	number,
 	number,
-	number,
-	Array<[number, number] | [number, number, 'o', number, 1 | -1] | [number, number, 'h', number]>,
 	Array<number | boolean>?
 ];
 
-function packWaypoint(w: Waypoint): Packed[4][number] {
-	const r = Number(w.r.toPrecision(9));
-	const phi = Number(w.phi.toPrecision(6));
-	if (!w.dwell) return [r, phi];
-	if (w.dwell.kind === 'orbit') return [r, phi, 'o', w.dwell.revolutions, w.dwell.direction];
-	return [r, phi, 'h', Number(w.dwell.duration.toPrecision(6))];
+function sig(n: number, digits: number): number {
+	return Number(n.toPrecision(digits));
 }
 
-function unpackWaypoint(p: Packed[4][number]): Waypoint {
-	const [r, phi] = p;
-	if (p.length === 2) return { r, phi };
-	if (p[2] === 'o') return { r, phi, dwell: { kind: 'orbit', revolutions: p[3], direction: p[4] } };
-	return { r, phi, dwell: { kind: 'hover', duration: p[3] } };
+function pack(m: Manoeuvre): PackedManoeuvre {
+	if (m.kind === 'kick') return [sig(m.at, 9), 'k', sig(m.dv, 6), HEADINGS.indexOf(m.heading)];
+	return [sig(m.at, 9), 'h', sig(m.duration, 6)];
+}
+
+function unpack(p: PackedManoeuvre): Manoeuvre {
+	if (p[1] === 'k')
+		return { at: p[0], kind: 'kick', dv: p[2], heading: HEADINGS[p[3]] ?? 'prograde' };
+	return { at: p[0], kind: 'hold', duration: p[2] };
 }
 
 function toBase64Url(s: string): string {
@@ -42,23 +45,23 @@ function toBase64Url(s: string): string {
 
 function fromBase64Url(s: string): string {
 	const bin = atob(s.replaceAll('-', '+').replaceAll('_', '/'));
-	const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-	return new TextDecoder().decode(bytes);
+	return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
 export function encodeScene(s: SceneSnapshot): string {
+	const st = s.plan.start;
 	const packed: Packed = [
 		s.body,
-		Number(s.course.cruiseSpeed.toPrecision(6)),
+		[sig(st.r, 9), sig(st.phi, 6), st.kind === 'orbit' ? 'o' : 'h', st.direction],
+		s.plan.manoeuvres.map(pack),
 		s.warp,
-		Number(s.t.toPrecision(9)),
-		s.course.waypoints.map(packWaypoint)
+		sig(s.t, 9)
 	];
 	if (s.camera) {
 		packed.push([
-			Number(s.camera.frame.toPrecision(6)),
-			Number(s.camera.cx.toPrecision(6)),
-			Number(s.camera.cy.toPrecision(6)),
+			sig(s.camera.frame, 6),
+			sig(s.camera.cx, 6),
+			sig(s.camera.cy, 6),
 			s.camera.follow
 		]);
 	}
@@ -68,12 +71,21 @@ export function encodeScene(s: SceneSnapshot): string {
 export function decodeScene(encoded: string): SceneSnapshot | null {
 	try {
 		const p = JSON.parse(fromBase64Url(encoded)) as Packed;
-		if (typeof p[0] !== 'string' || !Array.isArray(p[4])) return null;
+		if (typeof p[0] !== 'string' || !Array.isArray(p[1]) || !Array.isArray(p[2])) return null;
+		const [r, phi, kind, direction] = p[1];
 		const snapshot: SceneSnapshot = {
 			body: p[0],
-			course: { cruiseSpeed: p[1], waypoints: p[4].map(unpackWaypoint) },
-			warp: p[2],
-			t: p[3]
+			plan: {
+				start: {
+					r,
+					phi,
+					kind: kind === 'h' ? 'hold' : 'orbit',
+					direction: direction === -1 ? -1 : 1
+				},
+				manoeuvres: p[2].map(unpack)
+			},
+			warp: p[3],
+			t: p[4]
 		};
 		const cam = p[5];
 		if (cam && cam.length === 4) {

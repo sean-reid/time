@@ -3,12 +3,11 @@ import { decodeScene, encodeScene, type SceneSnapshot } from './url';
 
 const scene: SceneSnapshot = {
 	body: 'earth',
-	course: {
-		cruiseSpeed: 3e6,
-		waypoints: [
-			{ r: 2.656e7, phi: -0.785398, dwell: { kind: 'orbit', revolutions: 2, direction: 1 } },
-			{ r: 7e6, phi: 1.2 },
-			{ r: 6.8e6, phi: 1.5, dwell: { kind: 'hover', duration: 3600 } }
+	plan: {
+		start: { r: 2.656e7, phi: -0.785398, kind: 'orbit', direction: 1 },
+		manoeuvres: [
+			{ at: 120, kind: 'kick', dv: 1500, heading: 'retrograde' },
+			{ at: 4000.5, kind: 'hold', duration: 3600 }
 		]
 	},
 	warp: 60,
@@ -24,7 +23,7 @@ describe('scene url', () => {
 	});
 
 	it('stays short enough to share', () => {
-		expect(encodeScene(scene).length).toBeLessThan(220);
+		expect(encodeScene(scene).length).toBeLessThan(200);
 	});
 
 	it('rejects garbage without throwing', () => {

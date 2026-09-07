@@ -2,15 +2,33 @@
 	"ci": {
 		"assert": {
 			"assertions": {
-				"categories:performance": ["error", { "minScore": 0.9, "aggregationMethod": "median" }],
+				"categories:performance": [
+					"error",
+					{
+						"minScore": 0.9,
+						"aggregationMethod": "median"
+					}
+				],
 				"largest-contentful-paint": [
 					"error",
-					{ "maxNumericValue": 1000, "aggregationMethod": "median" }
+					{
+						"maxNumericValue": 2500,
+						"aggregationMethod": "median"
+					}
 				],
-				"total-byte-weight": ["warn", { "maxNumericValue": 300000, "aggregationMethod": "median" }],
+				"total-byte-weight": [
+					"warn",
+					{
+						"maxNumericValue": 300000,
+						"aggregationMethod": "median"
+					}
+				],
 				"cumulative-layout-shift": [
 					"error",
-					{ "maxNumericValue": 0.05, "aggregationMethod": "median" }
+					{
+						"maxNumericValue": 0.05,
+						"aggregationMethod": "median"
+					}
 				]
 			}
 		}

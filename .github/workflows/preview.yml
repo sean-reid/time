@@ -30,18 +30,38 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: versions upload --preview-alias pr-${{ github.event.pull_request.number }}
+      - id: preview
+        name: preview url
+        env:
+          OUT: ${{ steps.upload.outputs.command-output }}
+        run: |
+          url=$(printf '%s\n' "$OUT" | grep -oE 'https://pr-[0-9]+-[a-z0-9.-]+\.workers\.dev' | head -1)
+          [ -n "$url" ] || { echo "no preview url in wrangler output" >&2; exit 1; }
+          echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: comment preview url
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
-          OUT: ${{ steps.upload.outputs.command-output }}
+          URL: ${{ steps.preview.outputs.url }}
         run: |
-          url=$(printf '%s\n' "$OUT" | grep -oE 'https://pr-[0-9]+-[a-z0-9.-]+\.workers\.dev' | head -1)
-          [ -n "$url" ] || exit 0
-          body="Preview: $url"
+          body="Preview: $URL"
           existing=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --jq '.[] | select(.body | startswith("Preview: ")) | .id' | head -1)
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$existing" -f body="$body" >/dev/null
           else
             gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" >/dev/null
           fi
+      - name: wait for preview
+        env:
+          URL: ${{ steps.preview.outputs.url }}
+        run: curl -sfo /dev/null --retry 20 --retry-delay 3 --retry-all-errors "$URL"
+      - uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: ${{ steps.preview.outputs.url }}
+          runs: 3
+          configPath: lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: false
+      - name: lighthouse summary
+        if: ${{ !cancelled() }}
+        run: node scripts/lh-summary.mjs

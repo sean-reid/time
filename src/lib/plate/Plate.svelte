@@ -322,9 +322,11 @@
 			{#if visibleRing(Math.hypot(c.x, c.y))}
 				<path d={c.path} class="orbit" />
 				<circle cx={sx(c.x)} cy={sy(c.y)} r={Math.max(1.5, px(c.radius))} class="body" />
-				<text x={sx(c.x) + Math.max(1.5, px(c.radius)) + 6} y={sy(c.y) + 4} class="tag"
-					>{c.name}</text
-				>
+				{#if Math.hypot(sx(c.x) - sx(shipXY.x), sy(c.y) - sy(shipXY.y)) > 40}
+					<text x={sx(c.x) + Math.max(1.5, px(c.radius)) + 6} y={sy(c.y) + 4} class="tag"
+						>{c.name}</text
+					>
+				{/if}
 			{/if}
 		{/each}
 

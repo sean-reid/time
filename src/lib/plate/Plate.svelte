@@ -136,6 +136,7 @@
 
 	/** The flown and computed path, thinned to at most 1500 points, in screen space. */
 	let trail = $derived.by(() => {
+		void scene.samplesVersion;
 		const pts = scene.trajectory.samples;
 		const step = Math.max(1, Math.ceil(pts.length / 1500));
 		let d = '';

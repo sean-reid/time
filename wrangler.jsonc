@@ -9,5 +9,7 @@
 		"directory": ".svelte-kit/cloudflare"
 	},
 	"routes": [{ "pattern": "time.dwainosaur.com", "custom_domain": true }],
+	"workers_dev": true,
+	"preview_urls": true,
 	"observability": { "enabled": true }
 }

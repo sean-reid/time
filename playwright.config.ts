@@ -17,7 +17,7 @@ export default defineConfig({
 	webServer: {
 		command: 'pnpm build && pnpm preview',
 		port: 4173,
-		reuseExistingServer: !ci
+		reuseExistingServer: false
 	},
 	projects: [
 		{ name: 'desktop', use: { ...devices['Desktop Chrome'] } },

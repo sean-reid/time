@@ -1,5 +1,6 @@
 import type { Body } from '$lib/catalogue';
-import { C, makeField, type Course, type Field, type FieldSource } from '$lib/physics';
+import { makeField, type Field, type FieldSource, type Plan, type Space } from '$lib/physics';
+import { J2000_MS } from '$lib/physics';
 
 export function fieldSource(body: Body): FieldSource {
 	return { mass: body.mass.value, spin: body.spin?.value, radius: body.radius?.value };
@@ -9,8 +10,29 @@ export function fieldFor(body: Body): Field {
 	return makeField(fieldSource(body));
 }
 
+const COMPACT = new Set(['black-hole', 'neutron-star', 'magnetar', 'white-dwarf']);
+
+/** Geodesics around compact bodies; Newtonian motion with a post-Newtonian clock elsewhere. */
+export function regimeFor(body: Body): Space['regime'] {
+	return COMPACT.has(body.kind) ? 'geodesic' : 'newtonian';
+}
+
+/** Seconds from J2000.0 to a wall-clock instant, so companions sit where they really are. */
+export function epochSeconds(wallMs: number): number {
+	return (wallMs - J2000_MS) / 1000;
+}
+
+export function spaceFor(body: Body, wallMs: number): Space {
+	return {
+		field: fieldFor(body),
+		regime: regimeFor(body),
+		attractors: [],
+		epoch: epochSeconds(wallMs)
+	};
+}
+
 /** Where a visitor starts around a body: a named orbit if there is one, else a telling radius. */
-export function defaultOrbitRadius(body: Body, field: Field): number {
+export function defaultStartRadius(body: Body, field: Field): number {
 	const named = body.orbits?.find((o) => o.id === 'gps') ?? body.orbits?.[0];
 	if (named) return named.radius.value;
 	if (body.kind === 'black-hole') return 2 * field.isco(1);
@@ -21,16 +43,10 @@ export function defaultOrbitRadius(body: Body, field: Field): number {
 	return 1.5 * field.surface;
 }
 
-export function defaultCruiseSpeed(field: Field, r: number): number {
-	const v = 2 * field.orbitLocalSpeed(r);
-	return Math.min(0.2 * C, Math.max(1e4, v));
-}
-
-export function defaultCourse(body: Body, field: Field): Course {
-	const r = defaultOrbitRadius(body, field);
+export function defaultPlan(body: Body, field: Field): Plan {
 	return {
-		cruiseSpeed: defaultCruiseSpeed(field, r),
-		waypoints: [{ r, phi: -Math.PI / 4, dwell: { kind: 'orbit', revolutions: 1, direction: 1 } }]
+		start: { r: defaultStartRadius(body, field), phi: -Math.PI / 4, kind: 'orbit', direction: 1 },
+		manoeuvres: []
 	};
 }
 
@@ -42,9 +58,8 @@ export interface Camera {
 	follow: boolean;
 }
 
-export function defaultCamera(course: Course): Camera {
-	const rMax = Math.max(...course.waypoints.map((w) => w.r));
-	return { frame: 2.6 * rMax, cx: 0, cy: 0, follow: false };
+export function defaultCamera(plan: Plan): Camera {
+	return { frame: 2.6 * plan.start.r, cx: 0, cy: 0, follow: false };
 }
 
 export const WARPS = [1, 10, 60, 600, 3600, 86_400, 604_800, 2_629_800, 31_557_600];

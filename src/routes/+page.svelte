@@ -2,6 +2,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { bodies } from '$lib/catalogue';
 	import { formatRelativeRate } from '$lib/format';
 	import Plate from '$lib/plate/Plate.svelte';
@@ -17,6 +18,14 @@
 	const scene = new Scene(untrack(() => data.snapshot));
 	scene.tour = untrack(() => data.tourId);
 	let tour = $derived(scene.tour ? tourById(scene.tour) : null);
+
+	const description =
+		'Fly past the Sun, a neutron star, or a black hole and watch your clock drift from the one on Earth.';
+	const image = $derived.by(() => {
+		const url = new URL(resolve('/og'), page.url.origin);
+		if (data.s) url.searchParams.set('s', data.s);
+		return url.href;
+	});
 
 	let note = $derived.by(() => {
 		const rate = formatRelativeRate(scene.ship.deficit, scene.earthDeficit);
@@ -78,10 +87,14 @@
 
 <svelte:head>
 	<title>time</title>
-	<meta
-		name="description"
-		content="Fly past the Sun, a neutron star, or a black hole and watch your clock drift from the one on Earth."
-	/>
+	<meta name="description" content={description} />
+	<meta property="og:title" content="time" />
+	<meta property="og:description" content={description} />
+	<meta property="og:image" content={image} />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:image" content={image} />
 </svelte:head>
 
 <main class="app">

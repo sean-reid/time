@@ -37,6 +37,7 @@ export class Scene {
 	selected = $state<number | null>(null);
 	/** Id of the guided tour this scene came from, cleared by any edit. */
 	tour = $state<string | null>(null);
+	sound = $state(false);
 
 	field = $derived(fieldFor(this.body));
 	flight = $derived<Flight>(integrate(this.field, this.course));

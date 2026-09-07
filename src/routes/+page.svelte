@@ -6,6 +6,7 @@
 	import { formatRelativeRate } from '$lib/format';
 	import Plate from '$lib/plate/Plate.svelte';
 	import { Scene } from '$lib/sim/scene.svelte';
+	import { Ticker } from '$lib/sim/ticker';
 	import { encodeScene } from '$lib/sim/url';
 	import { tourById } from '$lib/tours';
 	import CoursePanel from '$lib/ui/CoursePanel.svelte';
@@ -28,16 +29,35 @@
 		return `Here ${rate} than Earth.`;
 	});
 
+	const ticker = new Ticker();
+
 	onMount(() => {
 		let prev = performance.now();
 		let frame = 0;
 		const tick = (now: number) => {
 			scene.advance((now - prev) / 1000);
 			prev = now;
+			if (ticker.running) {
+				const w = scene.playing ? scene.warp : 0;
+				ticker.update(
+					scene.ship.tau,
+					w * (1 - scene.ship.deficit),
+					scene.earthElapsed,
+					w * (1 - scene.earthDeficit)
+				);
+			}
 			frame = requestAnimationFrame(tick);
 		};
 		frame = requestAnimationFrame(tick);
-		return () => cancelAnimationFrame(frame);
+		return () => {
+			cancelAnimationFrame(frame);
+			ticker.stop();
+		};
+	});
+
+	$effect(() => {
+		if (scene.sound && !ticker.running) ticker.start(scene.ship.tau, scene.earthElapsed);
+		if (!scene.sound && ticker.running) ticker.stop();
 	});
 
 	let syncTimer: ReturnType<typeof setTimeout> | undefined;

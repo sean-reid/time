@@ -84,7 +84,7 @@
 		<span class="num">{formatWarp(scene.warp)}</span>
 		<button type="button" onclick={() => scene.stepWarp(1)} aria-label="Speed time up">+</button>
 	</div>
-	<div class="row">
+	<div class="row three">
 		<button
 			type="button"
 			onclick={() => (scene.playing = !scene.playing)}
@@ -93,6 +93,14 @@
 			{scene.playing ? 'Pause' : 'Resume'}
 		</button>
 		<button type="button" onclick={() => scene.restart()}>Restart</button>
+		<button
+			type="button"
+			onclick={() => (scene.sound = !scene.sound)}
+			aria-pressed={scene.sound}
+			title="Hear both clocks tick"
+		>
+			Tick
+		</button>
 	</div>
 </div>
 
@@ -145,6 +153,9 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 8px;
+	}
+	.row.three {
+		grid-template-columns: 1fr 1fr auto;
 	}
 	button[aria-pressed='true'] {
 		background: var(--ink);

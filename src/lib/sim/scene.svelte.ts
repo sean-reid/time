@@ -7,6 +7,15 @@ import {
 	type Sample
 } from '$lib/physics';
 import { defaultCamera, defaultCourse, fieldFor, WARPS, type Camera } from './defaults';
+import {
+	addWaypoint,
+	clampWaypoint,
+	removeWaypoint,
+	snapRadius,
+	toPolar,
+	updateWaypoint,
+	type Dwell as EditDwell
+} from './edit';
 import type { SceneSnapshot } from './url';
 
 export type Phase = 'orbiting' | 'holding' | 'cruising' | 'landed' | 'horizon';
@@ -24,6 +33,8 @@ export class Scene {
 	camera = $state<Camera>({ frame: 1, cx: 0, cy: 0, follow: false });
 	/** Wall clock at which the ship left Earth; both clocks read this at t = 0. */
 	departedAt = $state(Date.now());
+	plotting = $state(false);
+	selected = $state<number | null>(null);
 
 	field = $derived(fieldFor(this.body));
 	flight = $derived<Flight>(integrate(this.field, this.course));
@@ -37,7 +48,10 @@ export class Scene {
 	constructor(snapshot?: SceneSnapshot | null) {
 		if (snapshot) {
 			this.body = bodyById(snapshot.body);
-			this.course = snapshot.course;
+			this.course = {
+				...snapshot.course,
+				waypoints: snapshot.course.waypoints.map((w) => clampWaypoint(w, this.field))
+			};
 			this.warp = snapshot.warp;
 			this.t = snapshot.t;
 			this.camera = snapshot.camera ?? defaultCamera(snapshot.course);
@@ -57,6 +71,44 @@ export class Scene {
 	setCourse(course: Course) {
 		this.course = course;
 		this.restart();
+	}
+
+	clearCourse() {
+		this.selected = null;
+		this.setCourse(defaultCourse(this.body, this.field));
+	}
+
+	addWaypointAt(x: number, y: number) {
+		this.course = addWaypoint(this.course, toPolar(x, y), this.field);
+		this.selected = this.course.waypoints.length - 1;
+	}
+
+	addWaypointByKeyboard() {
+		const from = this.course.waypoints[this.selected ?? this.course.waypoints.length - 1];
+		const r = from ? from.r * 1.25 : this.field.surface * 3;
+		const phi = from ? from.phi + 0.6 : 0;
+		this.course = addWaypoint(this.course, { r, phi }, this.field);
+		this.selected = this.course.waypoints.length - 1;
+	}
+
+	moveWaypoint(i: number, x: number, y: number, snapTo: readonly number[], tolerance: number) {
+		const p = toPolar(x, y);
+		const r = snapRadius(p.r, snapTo, tolerance);
+		this.course = updateWaypoint(this.course, i, { r, phi: p.phi }, this.field);
+	}
+
+	patchWaypoint(i: number, patch: { r?: number; phi?: number; dwell?: EditDwell | undefined }) {
+		this.course = updateWaypoint(this.course, i, patch, this.field);
+	}
+
+	removeWaypoint(i: number) {
+		this.course = removeWaypoint(this.course, i);
+		if (this.course.waypoints.length === 0) this.clearCourse();
+		else this.selected = Math.min(i, this.course.waypoints.length - 1);
+	}
+
+	setCruiseSpeed(v: number) {
+		this.course = { ...this.course, cruiseSpeed: v };
 	}
 
 	restart() {

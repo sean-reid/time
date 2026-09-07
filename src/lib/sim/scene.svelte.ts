@@ -35,6 +35,8 @@ export class Scene {
 	departedAt = $state(Date.now());
 	plotting = $state(false);
 	selected = $state<number | null>(null);
+	/** Id of the guided tour this scene came from, cleared by any edit. */
+	tour = $state<string | null>(null);
 
 	field = $derived(fieldFor(this.body));
 	flight = $derived<Flight>(integrate(this.field, this.course));
@@ -62,6 +64,7 @@ export class Scene {
 	}
 
 	setBody(id: string) {
+		this.tour = null;
 		this.body = bodyById(id);
 		this.course = defaultCourse(this.body, this.field);
 		this.camera = defaultCamera(this.course);
@@ -69,6 +72,7 @@ export class Scene {
 	}
 
 	setCourse(course: Course) {
+		this.tour = null;
 		this.course = course;
 		this.restart();
 	}
@@ -79,11 +83,13 @@ export class Scene {
 	}
 
 	addWaypointAt(x: number, y: number) {
+		this.tour = null;
 		this.course = addWaypoint(this.course, toPolar(x, y), this.field);
 		this.selected = this.course.waypoints.length - 1;
 	}
 
 	addWaypointByKeyboard() {
+		this.tour = null;
 		const from = this.course.waypoints[this.selected ?? this.course.waypoints.length - 1];
 		const r = from ? from.r * 1.25 : this.field.surface * 3;
 		const phi = from ? from.phi + 0.6 : 0;
@@ -92,22 +98,26 @@ export class Scene {
 	}
 
 	moveWaypoint(i: number, x: number, y: number, snapTo: readonly number[], tolerance: number) {
+		this.tour = null;
 		const p = toPolar(x, y);
 		const r = snapRadius(p.r, snapTo, tolerance);
 		this.course = updateWaypoint(this.course, i, { r, phi: p.phi }, this.field);
 	}
 
 	patchWaypoint(i: number, patch: { r?: number; phi?: number; dwell?: EditDwell | undefined }) {
+		this.tour = null;
 		this.course = updateWaypoint(this.course, i, patch, this.field);
 	}
 
 	removeWaypoint(i: number) {
+		this.tour = null;
 		this.course = removeWaypoint(this.course, i);
 		if (this.course.waypoints.length === 0) this.clearCourse();
 		else this.selected = Math.min(i, this.course.waypoints.length - 1);
 	}
 
 	setCruiseSpeed(v: number) {
+		this.tour = null;
 		this.course = { ...this.course, cruiseSpeed: v };
 	}
 

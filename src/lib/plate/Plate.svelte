@@ -429,7 +429,7 @@
 		min-width: 44px;
 		padding: 0 10px;
 		font-size: 13px;
-		background: var(--paper);
+		--button-bg: var(--paper);
 	}
 	.controls button[aria-pressed='true'] {
 		background: var(--ink);

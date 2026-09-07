@@ -57,6 +57,6 @@
 	}
 	.row button {
 		font-size: 13px;
-		background: var(--paper);
+		--button-bg: var(--paper);
 	}
 </style>

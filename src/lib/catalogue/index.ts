@@ -3,7 +3,7 @@ import type { Body } from './types';
 
 export { bodies } from './bodies';
 export type { BodyId } from './bodies';
-export type { Body, BodyKind, Orbit, Quantity, Source } from './types';
+export type { Body, BodyKind, Companion, Orbit, Quantity, Source } from './types';
 
 export function bodyById(id: string): Body {
 	const body = bodies.find((b) => b.id === id);

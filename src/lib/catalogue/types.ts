@@ -20,6 +20,21 @@ export interface Orbit {
 	radius: Quantity;
 }
 
+/** A body on a Kepler orbit around the scene's central body, drawn to scale and moving with time. */
+export interface Companion {
+	/** Id of a catalogued Body. */
+	body: string;
+	semiMajorAxis: Quantity;
+	/** Unit '1', in [0, 1). */
+	eccentricity: Quantity;
+	/** Sidereal orbital period. */
+	period: Quantity;
+	/** Argument of periapsis in the plate plane, radians, unit '1'; 0 when unknown, with a note. */
+	argumentOfPeriapsis: Quantity;
+	/** Mean anomaly at J2000.0 (JD 2451545.0 TT), radians, unit '1'; 0 when unknown, with a note. */
+	meanAnomalyAtEpoch: Quantity;
+}
+
 export interface Body {
 	id: string;
 	name: string;
@@ -34,4 +49,5 @@ export interface Body {
 	distanceFromEarth?: Quantity;
 	summary: string;
 	orbits?: readonly Orbit[];
+	companions?: readonly Companion[];
 }

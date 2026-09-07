@@ -7,6 +7,7 @@
 	import Plate from '$lib/plate/Plate.svelte';
 	import { Scene } from '$lib/sim/scene.svelte';
 	import { encodeScene } from '$lib/sim/url';
+	import CoursePanel from '$lib/ui/CoursePanel.svelte';
 	import Instruments from '$lib/ui/Instruments.svelte';
 
 	let { data } = $props();
@@ -75,6 +76,7 @@
 
 	<aside class="strip">
 		<Instruments {scene} />
+		<CoursePanel {scene} />
 	</aside>
 </main>
 

@@ -14,7 +14,22 @@
 
 	const ISOCHRONES = [0.9, 0.5, 0.1, 0.01];
 
-	let shipXY = $derived(waypointXY(scene.ship));
+	let reducedMotion = $state(false);
+	let shownShip = $state({ x: 0, y: 0 });
+	let lastShown = 0;
+	$effect(() => {
+		const xy = waypointXY(scene.ship);
+		if (!reducedMotion) {
+			shownShip = xy;
+			return;
+		}
+		const now = performance.now();
+		if (now - lastShown >= 1000) {
+			lastShown = now;
+			shownShip = xy;
+		}
+	});
+	let shipXY = $derived(shownShip);
 	let centre = $derived(scene.camera.follow ? shipXY : { x: scene.camera.cx, y: scene.camera.cy });
 
 	function sx(x: number) {
@@ -97,7 +112,52 @@
 			h = e.contentRect.height;
 		});
 		ro.observe(node);
-		return { destroy: () => ro.disconnect() };
+		const motion = matchMedia('(prefers-reduced-motion: reduce)');
+		reducedMotion = motion.matches;
+		const onMotion = () => (reducedMotion = motion.matches);
+		motion.addEventListener('change', onMotion);
+		return {
+			destroy: () => {
+				ro.disconnect();
+				motion.removeEventListener('change', onMotion);
+			}
+		};
+	}
+
+	function onKey(e: KeyboardEvent) {
+		const pan = 40 * mpp;
+		const cam = scene.camera;
+		switch (e.key) {
+			case '+':
+			case '=':
+				zoomAt(1 / 1.6, w / 2, h / 2);
+				break;
+			case '-':
+			case '_':
+				zoomAt(1.6, w / 2, h / 2);
+				break;
+			case 'ArrowLeft':
+				scene.camera = { ...cam, cx: centre.x - pan, cy: centre.y, follow: false };
+				break;
+			case 'ArrowRight':
+				scene.camera = { ...cam, cx: centre.x + pan, cy: centre.y, follow: false };
+				break;
+			case 'ArrowUp':
+				scene.camera = { ...cam, cx: centre.x, cy: centre.y + pan, follow: false };
+				break;
+			case 'ArrowDown':
+				scene.camera = { ...cam, cx: centre.x, cy: centre.y - pan, follow: false };
+				break;
+			case 'c':
+				recentre();
+				break;
+			case 'f':
+				toggleFollow();
+				break;
+			default:
+				return;
+		}
+		e.preventDefault();
 	}
 
 	function zoomAt(factor: number, atX: number, atY: number) {
@@ -136,9 +196,9 @@
 	function worldAt(x: number, y: number) {
 		return { x: centre.x + (x - w / 2) * mpp, y: centre.y - (y - h / 2) * mpp };
 	}
-	function waypointAt(x: number, y: number): number | null {
+	function waypointAt(x: number, y: number, touch = false): number | null {
 		let best: number | null = null;
-		let bestD = 14;
+		let bestD = touch ? 22 : 14;
 		scene.course.waypoints.forEach((wp, i) => {
 			const p = waypointXY(wp);
 			const d = Math.hypot(sx(p.x) - x, sy(p.y) - y);
@@ -159,7 +219,7 @@
 			return;
 		}
 		pressed = { x: e.offsetX, y: e.offsetY, moved: false };
-		dragging = scene.plotting ? waypointAt(e.offsetX, e.offsetY) : null;
+		dragging = scene.plotting ? waypointAt(e.offsetX, e.offsetY, e.pointerType === 'touch') : null;
 	}
 	function pinchDistance() {
 		const [a, b] = [...pointers.values()];
@@ -197,7 +257,7 @@
 		pointers.delete(e.pointerId);
 		if (pointers.size < 2) lastPinch = 0;
 		if (pressed && !pressed.moved && scene.plotting) {
-			const hit = waypointAt(e.offsetX, e.offsetY);
+			const hit = waypointAt(e.offsetX, e.offsetY, e.pointerType === 'touch');
 			if (hit !== null) scene.selected = hit;
 			else {
 				const wp = worldAt(e.offsetX, e.offsetY);
@@ -219,11 +279,15 @@
 	}
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
 	class="plate"
 	class:plotting={scene.plotting}
 	role="application"
-	aria-label="Map of {scene.body.name}. Drag to pan, scroll or pinch to zoom.{scene.plotting
+	tabindex="0"
+	onkeydown={onKey}
+	aria-label="Map of {scene.body
+		.name}. Drag or use arrow keys to pan, scroll, pinch or press plus and minus to zoom, c to centre, f to follow the ship.{scene.plotting
 		? ' Tap to add a waypoint, drag one to move it.'
 		: ''}"
 	use:observe

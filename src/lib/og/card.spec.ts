@@ -76,7 +76,7 @@ describe('share card', () => {
 			waypoints: [{ r: field.surface * (1 + 1e-13), phi: 0, dwell: { kind: 'hover', duration: 1 } }]
 		});
 		expect(svg).toMatch(
-			/Earth runs [\d.]+×10<tspan baseline-shift="super"[^>]*>\d+<\/tspan> times faster/
+			/Earth runs [\d.]+×10<tspan baseline-shift="0.5em"[^>]*>\d+<\/tspan> times faster/
 		);
 		expect(svg).not.toMatch(/[⁰¹²³⁴⁵⁶⁷⁸⁹\u03bc\u2009]/);
 	});

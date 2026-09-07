@@ -46,7 +46,7 @@ function typeset(text: string): string {
 	const mapped = text.replace(/[\u03bc\u2009]/g, (c) => GLYPHS[c]);
 	return escape(mapped).replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (run) => {
 		const digits = [...run].map((c) => SUPERSCRIPTS[c]).join('');
-		return `<tspan baseline-shift="super" font-size="60%">${digits}</tspan>`;
+		return `<tspan baseline-shift="0.5em" font-size="60%">${digits}</tspan>`;
 	});
 }
 

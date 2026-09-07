@@ -83,24 +83,34 @@
 
 	<h2 class="label">GPS, the everyday case</h2>
 	<p>
-		At sea level Earth's own field slows a clock by <span class="num">6.97</span> parts in
-		<span class="num">10<sup>10</sup></span>, the IAU constant
-		<math><msub><mi>L</mi><mi>G</mi></msub></math>. A GPS satellite at
-		<span class="num">20 180 km</span> altitude sits higher in the well and gains about
-		<span class="num">45.7 µs</span> a day. It also moves at <span class="num">3.87 km/s</span> and
-		loses about <span class="num">7.2 µs</span> a day. Net, its clock gains about
-		<span class="num">38.6 µs</span> a day, and the system corrects for it.
+		At sea level Earth's own field slows a clock by 6.97 parts in 10<sup>10</sup>, the IAU constant
+		<math><msub><mi>L</mi><mi>G</mi></msub></math>. A GPS satellite at 20 180 km altitude sits
+		higher in the well and gains about 45.7 µs a day. It also moves at 3.87 km/s and loses about 7.2
+		µs a day. Net, its clock gains about 38.6 µs a day, and the system corrects for it.
 	</p>
 
 	<h2 class="label">The reference frame</h2>
 	<p>
 		In Earth scenes coordinate time is geocentric, and Earth's clock runs slow by
-		<math><msub><mi>L</mi><mi>G</mi></msub></math>
-		<span class="num">= 6.969290134 × 10<sup>−10</sup></span>. In every other scene coordinate time
-		belongs to the body you are visiting, and Earth's clock carries its full share of the solar
-		system's potential, <math><msub><mi>L</mi><mi>B</mi></msub></math>
-		<span class="num">= 1.550519768 × 10<sup>−8</sup></span>. Both are IAU defined constants (IAU
-		2000 Resolution B1.9 and IAU 2006 Resolution B3).
+		<math>
+			<mrow>
+				<msub><mi>L</mi><mi>G</mi></msub>
+				<mo>=</mo>
+				<mn>6.969290134</mn>
+				<mo>×</mo>
+				<msup><mn>10</mn><mrow><mo>−</mo><mn>10</mn></mrow></msup>
+			</mrow>
+		</math>. In every other scene coordinate time belongs to the body you are visiting, and Earth's
+		clock carries its full share of the solar system's potential,
+		<math>
+			<mrow>
+				<msub><mi>L</mi><mi>B</mi></msub>
+				<mo>=</mo>
+				<mn>1.550519768</mn>
+				<mo>×</mo>
+				<msup><mn>10</mn><mrow><mo>−</mo><mn>8</mn></mrow></msup>
+			</mrow>
+		</math>. Both are IAU defined constants (IAU 2000 Resolution B1.9 and IAU 2006 Resolution B3).
 	</p>
 
 	<h2 class="label">What the ship can do</h2>
@@ -119,7 +129,7 @@
 	<dl>
 		<dt>Event horizon</dt>
 		<dd>
-			<span class="num">2</span> for a non-spinning hole. With spin
+			2 for a non-spinning hole. With spin
 			<math><msup><mi>a</mi><mo>*</mo></msup></math> it is
 			<math
 				><mrow
@@ -130,37 +140,30 @@
 			>.
 		</dd>
 		<dt>Photon sphere</dt>
-		<dd><span class="num">3</span> for no spin. Light circles here.</dd>
+		<dd>3 for no spin. Light circles here.</dd>
 		<dt>Innermost stable circular orbit</dt>
 		<dd>
-			<span class="num">6</span> for no spin. Spin pulls prograde orbits closer, down to
-			<span class="num">1</span> at
+			6 for no spin. Spin pulls prograde orbits closer, down to 1 at
 			<math><mrow><msup><mi>a</mi><mo>*</mo></msup><mo>=</mo><mn>1</mn></mrow></math>, and pushes
-			retrograde orbits out, to <span class="num">9</span> at the same spin (Bardeen, Press and Teukolsky
-			1972).
+			retrograde orbits out, to 9 at the same spin (Bardeen, Press and Teukolsky 1972).
 		</dd>
 		<dt>Ergosphere</dt>
 		<dd>
-			Inside <span class="num">2</span> around a spinning hole nothing can stay still. The ship holds
-			radius while dragged space sweeps it around, a zero angular momentum observer.
+			Inside 2 around a spinning hole nothing can stay still. The ship holds radius while dragged
+			space sweeps it around, a zero angular momentum observer.
 		</dd>
 	</dl>
 
 	<h2 class="label">Worked numbers</h2>
 	<dl>
 		<dt>Solar photosphere</dt>
-		<dd><span class="num">2.12</span> parts per million slower.</dd>
-		<dt>
-			Neutron star, <span class="num">2.01</span> solar masses, <span class="num">12 km</span> radius
-		</dt>
-		<dd>About <span class="num">29</span> percent slower at the surface.</dd>
+		<dd>2.12 parts per million slower.</dd>
+		<dt>Neutron star, 2.01 solar masses, 12 km radius</dt>
+		<dd>About 29 percent slower at the surface.</dd>
 		<dt>Horizon of any black hole</dt>
 		<dd>Rate zero for a clock holding station just outside.</dd>
 		<dt>Pound and Rebka, Harvard, 1960</dt>
-		<dd>
-			Measured <span class="num">2.46 × 10<sup>−15</sup></span> across
-			<span class="num">22.5 m</span>.
-		</dd>
+		<dd>Measured 2.46 × 10<sup>−15</sup> across 22.5 m.</dd>
 	</dl>
 
 	<h2 class="label">Scale</h2>

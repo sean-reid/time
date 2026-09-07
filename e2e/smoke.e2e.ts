@@ -11,3 +11,14 @@ test('both clocks tick from the same wall time', async ({ page }) => {
 	await expect.poll(async () => digits.first().innerText(), { timeout: 3000 }).not.toBe(before);
 	await expect(page.getByText('Drift since you left')).toBeVisible();
 });
+
+test('the flown path grows behind the ship', async ({ page }) => {
+	await page.goto('/');
+	await page.getByRole('button', { name: 'Speed time up' }).click();
+	await page.getByRole('button', { name: 'Speed time up' }).click();
+	await page.getByRole('button', { name: 'Speed time up' }).click();
+	const trail = page.locator('svg path.course');
+	await expect
+		.poll(async () => ((await trail.getAttribute('d')) ?? '').split('L').length, { timeout: 5000 })
+		.toBeGreaterThan(20);
+});

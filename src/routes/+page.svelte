@@ -197,6 +197,7 @@
 	.strip {
 		grid-area: strip;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		align-content: start;
 		gap: 24px;
 		padding: 8px 20px 20px;

@@ -31,6 +31,8 @@ export class Scene {
 	sound = $state(false);
 	/** Bumped when the trajectory must be rebuilt from the start. */
 	private generation = $state(0);
+	/** Bumped when the flight gains samples, so drawings of the path know to refresh. */
+	samplesVersion = $state(0);
 
 	field = $derived(fieldFor(this.body));
 	space = $derived<Space>(spaceFor(this.body, this.departedAt));
@@ -123,12 +125,17 @@ export class Scene {
 	seek(t: number) {
 		if (t < this.trajectory.samples[0].t) this.rebuild();
 		this.t = Math.max(0, t);
+		this.samplesVersion += 1;
 	}
 
 	advance(realSeconds: number) {
 		if (!this.playing) return;
 		const target = this.t + realSeconds * this.warp;
+		const before = this.trajectory.samples.length;
+		const last = this.trajectory.last;
 		this.trajectory.ensure(target);
+		if (this.trajectory.samples.length !== before || this.trajectory.last !== last)
+			this.samplesVersion += 1;
 		this.t = this.trajectory.ending ? target : Math.min(target, this.trajectory.last.t);
 	}
 

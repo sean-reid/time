@@ -44,7 +44,7 @@
 <dl class="readout">
 	<div>
 		<dt class="label">Drift since you left</dt>
-		<dd class="big num">{formatDrift(scene.drift)}</dd>
+		<dd class="big">{formatDrift(scene.drift)}</dd>
 	</div>
 	<div>
 		<dt class="label">Your clock</dt>
@@ -81,7 +81,7 @@
 			aria-label="Slow time down"
 			disabled={scene.warp === 1}>−</button
 		>
-		<span class="num">{formatWarp(scene.warp)}</span>
+		<span>{formatWarp(scene.warp)}</span>
 		<button type="button" onclick={() => scene.stepWarp(1)} aria-label="Speed time up">+</button>
 	</div>
 	<div class="row three">

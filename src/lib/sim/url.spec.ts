@@ -13,7 +13,7 @@ const scene: SceneSnapshot = {
 	},
 	warp: 60,
 	t: 1234.5,
-	camera: { mpp: 72000, cx: 0, cy: 0, follow: true }
+	camera: { frame: 6.4e7, cx: 0, cy: 0, follow: true }
 };
 
 describe('scene url', () => {

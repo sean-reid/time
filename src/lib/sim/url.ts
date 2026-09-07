@@ -6,7 +6,7 @@ export interface SceneSnapshot {
 	warp: number;
 	/** Coordinate seconds into the flight. */
 	t: number;
-	camera?: { mpp: number; cx: number; cy: number; follow: boolean };
+	camera?: { frame: number; cx: number; cy: number; follow: boolean };
 }
 
 type Packed = [
@@ -56,7 +56,7 @@ export function encodeScene(s: SceneSnapshot): string {
 	];
 	if (s.camera) {
 		packed.push([
-			Number(s.camera.mpp.toPrecision(6)),
+			Number(s.camera.frame.toPrecision(6)),
 			Number(s.camera.cx.toPrecision(6)),
 			Number(s.camera.cy.toPrecision(6)),
 			s.camera.follow
@@ -78,7 +78,7 @@ export function decodeScene(encoded: string): SceneSnapshot | null {
 		const cam = p[5];
 		if (cam && cam.length === 4) {
 			snapshot.camera = {
-				mpp: cam[0] as number,
+				frame: cam[0] as number,
 				cx: cam[1] as number,
 				cy: cam[2] as number,
 				follow: cam[3] as boolean

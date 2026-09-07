@@ -20,7 +20,7 @@ float lineAt(vec2 f, float weight) {
 }
 
 void main() {
-	vec2 offset = vec2(gl_FragCoord.x - uRes.x * 0.5, uRes.y * 0.5 - gl_FragCoord.y) * uMpp;
+	vec2 offset = (gl_FragCoord.xy - uRes * 0.5) * uMpp;
 	vec2 world = offset + uCentreRes;
 	float r = length(world);
 	if (uRs > 0.0 && r <= uInner) {

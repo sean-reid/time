@@ -1,4 +1,4 @@
-import type { Course, Waypoint } from './course';
+import { dwellEnd, type Course, type Waypoint } from './course';
 import type { Field } from './field';
 
 export interface Sample {
@@ -74,7 +74,7 @@ export function integrate(field: Field, course: Course): Flight {
 		}
 		const next = wps[i + 1];
 		if (!next) break;
-		const res = transfer(field, w, next, course.cruiseSpeed, t, tau, segment, samples);
+		const res = transfer(field, dwellEnd(w), next, course.cruiseSpeed, t, tau, segment, samples);
 		t = res.t;
 		tau = res.tau;
 		segment++;
@@ -143,8 +143,8 @@ function dwell(
 
 function transfer(
 	field: Field,
-	a: Waypoint,
-	b: Waypoint,
+	a: { r: number; phi: number },
+	b: { r: number; phi: number },
 	v: number,
 	t0: number,
 	tau0: number,

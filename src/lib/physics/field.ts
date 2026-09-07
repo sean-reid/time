@@ -74,6 +74,11 @@ export function makeField(src: FieldSource): Field {
 			const k = sqrtDeficit((v * v) / C2);
 			return g + k - g * k;
 		},
-		radialStretch: (r) => 1 / Math.sqrt(Math.max(1e-12, 1 - rs / r))
+		radialStretch: (r) => {
+			if (!kerr) return 1 / Math.sqrt(Math.max(1e-12, 1 - rs / r));
+			const m = rs / 2;
+			const delta = r * r - 2 * m * r + (spin * m) ** 2;
+			return r / Math.sqrt(Math.max(1e-12 * r * r, delta));
+		}
 	};
 }

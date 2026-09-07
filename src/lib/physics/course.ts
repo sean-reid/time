@@ -20,3 +20,11 @@ export interface Course {
 export function waypointXY(w: { r: number; phi: number }): { x: number; y: number } {
 	return { x: w.r * Math.cos(w.phi), y: w.r * Math.sin(w.phi) };
 }
+
+/** Where the ship is once a waypoint's dwell is over: orbits carry it around the body. */
+export function dwellEnd(w: Waypoint): { r: number; phi: number } {
+	if (w.dwell?.kind === 'orbit') {
+		return { r: w.r, phi: w.phi + w.dwell.direction * 2 * Math.PI * w.dwell.revolutions };
+	}
+	return { r: w.r, phi: w.phi };
+}

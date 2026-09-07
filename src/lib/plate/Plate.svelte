@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatLength, formatPercent } from '$lib/format';
-	import { C, schwarzschildRadius, waypointXY } from '$lib/physics';
+	import { C, dwellEnd, schwarzschildRadius, waypointXY } from '$lib/physics';
 	import type { Scene } from '$lib/sim/scene.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import Grid from './Grid.svelte';
@@ -124,10 +124,42 @@
 
 	const pointers = new SvelteMap<number, { x: number; y: number }>();
 	let lastPinch = 0;
+	let dragging: number | null = null;
+	let pressed: { x: number; y: number; moved: boolean } | null = null;
+
+	let snapTo = $derived([
+		...rings.map((r) => r.r),
+		...isochrones.map((i) => i.r),
+		...scene.course.waypoints.filter((w) => w.dwell?.kind === 'orbit').map((w) => w.r)
+	]);
+
+	function worldAt(x: number, y: number) {
+		return { x: centre.x + (x - w / 2) * mpp, y: centre.y - (y - h / 2) * mpp };
+	}
+	function waypointAt(x: number, y: number): number | null {
+		let best: number | null = null;
+		let bestD = 14;
+		scene.course.waypoints.forEach((wp, i) => {
+			const p = waypointXY(wp);
+			const d = Math.hypot(sx(p.x) - x, sy(p.y) - y);
+			if (d < bestD) {
+				best = i;
+				bestD = d;
+			}
+		});
+		return best;
+	}
+
 	function onPointerDown(e: PointerEvent) {
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
-		if (pointers.size === 2) lastPinch = pinchDistance();
+		if (pointers.size === 2) {
+			lastPinch = pinchDistance();
+			dragging = null;
+			return;
+		}
+		pressed = { x: e.offsetX, y: e.offsetY, moved: false };
+		dragging = scene.plotting ? waypointAt(e.offsetX, e.offsetY) : null;
 	}
 	function pinchDistance() {
 		const [a, b] = [...pointers.values()];
@@ -148,6 +180,12 @@
 			return;
 		}
 		if (e.buttons === 0) return;
+		if (pressed && Math.hypot(cur.x - pressed.x, cur.y - pressed.y) > 4) pressed.moved = true;
+		if (dragging !== null) {
+			const wp = worldAt(cur.x, cur.y);
+			scene.moveWaypoint(dragging, wp.x, wp.y, snapTo, 12 * mpp);
+			return;
+		}
 		scene.camera = {
 			frame: scene.camera.frame,
 			cx: centre.x - (cur.x - prev.x) * mpp,
@@ -158,6 +196,19 @@
 	function onPointerUp(e: PointerEvent) {
 		pointers.delete(e.pointerId);
 		if (pointers.size < 2) lastPinch = 0;
+		if (pressed && !pressed.moved && scene.plotting) {
+			const hit = waypointAt(e.offsetX, e.offsetY);
+			if (hit !== null) scene.selected = hit;
+			else {
+				const wp = worldAt(e.offsetX, e.offsetY);
+				scene.addWaypointAt(wp.x, wp.y);
+			}
+		} else if (pressed && !pressed.moved && dragging === null) {
+			scene.selected = null;
+		}
+		if (dragging !== null) scene.selected = dragging;
+		dragging = null;
+		pressed = null;
 	}
 
 	function recentre() {
@@ -170,8 +221,11 @@
 
 <div
 	class="plate"
+	class:plotting={scene.plotting}
 	role="application"
-	aria-label="Map of {scene.body.name}. Drag to pan, scroll or pinch to zoom."
+	aria-label="Map of {scene.body.name}. Drag to pan, scroll or pinch to zoom.{scene.plotting
+		? ' Tap to add a waypoint, drag one to move it.'
+		: ''}"
 	use:observe
 	onwheel={onWheel}
 	onpointerdown={onPointerDown}
@@ -218,10 +272,20 @@
 				<circle cx={sx(0)} cy={sy(0)} r={px(wp.r)} class="course" />
 			{/if}
 			{#if i < scene.course.waypoints.length - 1}
+				{@const from = waypointXY(dwellEnd(wp))}
 				{@const q = waypointXY(scene.course.waypoints[i + 1])}
-				<line x1={sx(p.x)} y1={sy(p.y)} x2={sx(q.x)} y2={sy(q.y)} class="course" />
+				<line x1={sx(from.x)} y1={sy(from.y)} x2={sx(q.x)} y2={sy(q.y)} class="course" />
 			{/if}
-			<circle cx={sx(p.x)} cy={sy(p.y)} r="3" class="waypoint" />
+			<circle
+				cx={sx(p.x)}
+				cy={sy(p.y)}
+				r={scene.selected === i ? 6 : 3.5}
+				class="waypoint"
+				class:selected={scene.selected === i}
+			/>
+			{#if scene.plotting}
+				<text x={sx(p.x) + 8} y={sy(p.y) - 6} class="tag accent">{i + 1}</text>
+			{/if}
 		{/each}
 
 		<g transform="translate({sx(shipXY.x)} {sy(shipXY.y)}) rotate({-heading})">
@@ -286,6 +350,12 @@
 		fill: var(--paper);
 		stroke: var(--accent);
 		stroke-width: 1.2;
+	}
+	.waypoint.selected {
+		fill: var(--accent);
+	}
+	.plate.plotting {
+		cursor: crosshair;
 	}
 	.ship {
 		fill: var(--accent);

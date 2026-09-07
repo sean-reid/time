@@ -1,7 +1,7 @@
 import type { Body } from '$lib/catalogue';
 import { formatLength, formatRelativeRate } from '$lib/format';
-import { earthReferenceDeficit, integrate, type Course, type Sample } from '$lib/physics';
-import { fieldFor } from '$lib/sim/defaults';
+import { earthReferenceDeficit, Trajectory, type FlightSample, type Plan } from '$lib/physics';
+import { fieldFor, spaceFor } from '$lib/sim/defaults';
 
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
@@ -62,7 +62,7 @@ function project(s: { r: number; phi: number }, scale: number): [number, number]
 	return [DRAWING_CX + s.r * Math.cos(s.phi) * scale, DRAWING_CY - s.r * Math.sin(s.phi) * scale];
 }
 
-function pathFor(samples: Sample[], scale: number): string {
+function pathFor(samples: FlightSample[], scale: number): string {
 	if (samples.length < 2) return '';
 	const step = Math.max(1, Math.ceil(samples.length / MAX_PATH_POINTS));
 	const points = samples.filter((_, i) => i % step === 0 || i === samples.length - 1);
@@ -72,28 +72,33 @@ function pathFor(samples: Sample[], scale: number): string {
 	return `<path d="${d}" fill="none" stroke="${ACCENT}" stroke-width="${HAIRLINE}" stroke-linejoin="round"/>`;
 }
 
-/** The share card for a scene: paper, the body as an ink disc, the course in accent, and the result at course end. */
-export function cardSvg(body: Body, course: Course): string {
+/** The share card for a scene: paper, the body as an ink disc, the flight in accent, and the result where it stands. */
+export function cardSvg(body: Body, plan: Plan, wallMs = Date.now()): string {
 	const field = fieldFor(body);
-	const flight = integrate(field, course);
-	const end = flight.samples[flight.samples.length - 1];
-	const inside = field.horizon !== null && end.r <= field.horizon;
-	const stopped = flight.ending.kind === 'horizon' || inside || !Number.isFinite(end.deficit);
-	const deficit = stopped ? 1 : end.deficit;
+	const started = plan.start.r > field.surface;
+	const traj = started ? new Trajectory(spaceFor(body, wallMs), plan) : null;
+	if (traj) {
+		const span = Math.max(
+			field.orbitPeriod(plan.start.r, plan.start.direction) * 2,
+			...plan.manoeuvres.map((m) => m.at * 1.2)
+		);
+		for (let i = 0; i < 6 && !traj.ending && traj.last.t < span; i++) traj.ensure(span);
+	}
+	const samples: FlightSample[] = traj ? traj.samples : [];
+	const end = traj ? traj.last : null;
+	const stopped = !traj || traj.ending?.kind === 'horizon' || !end || !Number.isFinite(end.deficit);
+	const deficit = stopped ? 1 : end!.deficit;
 	const rate = formatRelativeRate(deficit, earthReferenceDeficit(body.id === 'earth'));
 	const floor = field.horizon === null ? 'surface' : 'horizon';
-	const altitude = end.r - field.surface;
+	const altitude = end ? end.r - field.surface : 0;
 	const where =
-		altitude < 1 || flight.ending.kind !== 'complete'
+		!end || altitude < 1 || traj?.ending
 			? `at the ${floor}`
 			: `${formatLength(altitude)} above the ${floor}`;
 
-	const first = course.waypoints[0];
-	const firstOrbit = first?.dwell?.kind === 'orbit' ? first : null;
-	const extent = Math.max(field.surface, ...flight.samples.map((s) => s.r));
+	const extent = Math.max(field.surface, plan.start.r, ...samples.map((s) => s.r));
 	const scale = DRAWING_RADIUS / extent;
-	const rest = firstOrbit ? flight.samples.filter((s) => s.segment !== 0) : flight.samples;
-	const [endX, endY] = project(end, scale);
+	const [endX, endY] = end ? project(end, scale) : [DRAWING_CX, DRAWING_CY];
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}">
 <rect width="${CARD_WIDTH}" height="${CARD_HEIGHT}" fill="${PAPER}"/>
@@ -103,8 +108,7 @@ export function cardSvg(body: Body, course: Course): string {
 <text x="${MARGIN}" y="500" font-size="38" fill="${INK}">${typeset(rate)}</text>
 <text x="${MARGIN}" y="552" font-size="30" fill="${INK_SOFT}">${typeset(where)}</text>
 </g>
-${firstOrbit ? `<circle cx="${DRAWING_CX}" cy="${DRAWING_CY}" r="${round(firstOrbit.r * scale)}" fill="none" stroke="${ACCENT}" stroke-width="${HAIRLINE}"/>` : ''}
-${pathFor(rest, scale)}
+${pathFor(samples, scale)}
 <circle cx="${DRAWING_CX}" cy="${DRAWING_CY}" r="${round(Math.max(2, field.surface * scale))}" fill="${INK}"/>
 <circle cx="${round(endX)}" cy="${round(endY)}" r="6" fill="${ACCENT}"/>
 </svg>

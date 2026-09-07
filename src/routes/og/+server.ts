@@ -1,27 +1,27 @@
 import { bodyById, type Body } from '$lib/catalogue';
 import { cardSvg } from '$lib/og/card';
 import { renderPng } from '$lib/og/render';
-import { defaultCourse, fieldFor } from '$lib/sim/defaults';
+import { defaultPlan, fieldFor } from '$lib/sim/defaults';
 import { decodeScene } from '$lib/sim/url';
-import type { Course } from '$lib/physics';
+import type { Plan } from '$lib/physics';
 import type { RequestHandler } from './$types';
 
-function defaultScene(): { body: Body; course: Course } {
+function defaultScene(): { body: Body; plan: Plan } {
 	const body = bodyById('earth');
-	return { body, course: defaultCourse(body, fieldFor(body)) };
+	return { body, plan: defaultPlan(body, fieldFor(body)) };
 }
 
 function svgFor(encoded: string | null): string {
 	const scene = encoded ? decodeScene(encoded) : null;
 	if (scene) {
 		try {
-			return cardSvg(bodyById(scene.body), scene.course);
+			return cardSvg(bodyById(scene.body), scene.plan);
 		} catch {
 			// a stale or hand-edited link still gets a card
 		}
 	}
-	const { body, course } = defaultScene();
-	return cardSvg(body, course);
+	const { body, plan } = defaultScene();
+	return cardSvg(body, plan);
 }
 
 export const GET: RequestHandler = async ({ url }) => {

@@ -7,11 +7,15 @@
 	import Plate from '$lib/plate/Plate.svelte';
 	import { Scene } from '$lib/sim/scene.svelte';
 	import { encodeScene } from '$lib/sim/url';
+	import { tourById } from '$lib/tours';
 	import CoursePanel from '$lib/ui/CoursePanel.svelte';
 	import Instruments from '$lib/ui/Instruments.svelte';
+	import TourBar from '$lib/ui/TourBar.svelte';
 
 	let { data } = $props();
 	const scene = new Scene(untrack(() => data.snapshot));
+	scene.tour = untrack(() => data.tourId);
+	let tour = $derived(scene.tour ? tourById(scene.tour) : null);
 
 	let note = $derived.by(() => {
 		const rate = formatRelativeRate(scene.ship.deficit, scene.earthDeficit);
@@ -38,9 +42,17 @@
 
 	let syncTimer: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
-		const encoded = encodeScene({ ...scene.snapshot(), t: 0 });
+		const query = scene.tour
+			? `/?tour=${scene.tour}`
+			: `/?s=${encodeScene({
+					body: scene.body.id,
+					course: scene.course,
+					warp: scene.warp,
+					t: 0,
+					camera: scene.camera
+				})}`;
 		clearTimeout(syncTimer);
-		syncTimer = setTimeout(() => replaceState(resolve(`/?s=${encoded}`), {}), 400);
+		syncTimer = setTimeout(() => replaceState(resolve(query as `/?${string}`), {}), 400);
 	});
 </script>
 
@@ -72,7 +84,13 @@
 	<section class="view">
 		<Plate {scene} />
 	</section>
-	<p class="note" aria-live="polite">{note}</p>
+	{#if tour}
+		<div class="note">
+			<TourBar {scene} {tour} onleave={() => (scene.tour = null)} />
+		</div>
+	{:else}
+		<p class="note" aria-live="polite">{note}</p>
+	{/if}
 
 	<aside class="strip">
 		<Instruments {scene} />
@@ -139,9 +157,11 @@
 		justify-self: start;
 		z-index: 1;
 		margin: 0 20px 16px;
-		max-width: 34ch;
+		max-width: 44ch;
 		font-size: 14px;
 		color: var(--ink-soft);
+	}
+	.note:not(:has(button)) {
 		pointer-events: none;
 	}
 	.strip {

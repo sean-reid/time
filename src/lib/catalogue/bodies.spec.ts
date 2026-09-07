@@ -17,6 +17,16 @@ function quantities(body: Body): Quantity[] {
 }
 
 const all: readonly Body[] = bodies;
+
+function kindRank(b: Body): number {
+	return b.kind === 'black-hole' ? 2 : ['star', 'planet', 'moon'].includes(b.kind) ? 0 : 1;
+}
+
+/** A companion displays with its primary, so a star orbiting a remnant ranks as a remnant. */
+function displayRank(b: Body): number {
+	const primaries = all.filter((p) => p.companions?.some((c) => c.body === b.id));
+	return Math.max(kindRank(b), ...primaries.map(kindRank));
+}
 const blackHoles = all.filter((b) => b.kind === 'black-hole');
 const others = all.filter((b) => b.kind !== 'black-hole');
 
@@ -92,10 +102,17 @@ describe('catalogue', () => {
 	});
 
 	it('orders the display solar system first, then remnants, then black holes', () => {
-		const rank = (b: Body) =>
-			b.kind === 'black-hole' ? 2 : ['star', 'planet', 'moon'].includes(b.kind) ? 0 : 1;
-		const ranks = all.map(rank);
+		const ranks = all.map(displayRank);
 		expect(ranks).toEqual([...ranks].sort());
+	});
+
+	it('places a stellar companion right after the remnant or black hole it orbits', () => {
+		for (const body of all) {
+			for (const companion of body.companions ?? []) {
+				if (kindRank(bodyById(companion.body)) >= kindRank(body)) continue;
+				expect(all.indexOf(bodyById(companion.body))).toBe(all.indexOf(body) + 1);
+			}
+		}
 	});
 
 	it('throws on an unknown id', () => {

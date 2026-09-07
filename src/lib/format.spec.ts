@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	formatPercent,
 	formatDrift,
 	formatDuration,
 	formatLength,
@@ -35,6 +36,15 @@ describe('formatLength', () => {
 		expect(formatLength(1.495978707e11 * 5.2)).toBe('5.2 AU');
 		expect(formatLength(500)).toBe('500 m');
 		expect(formatLength(1.2e15)).toBe('8\u2009022 AU');
+		expect(formatLength(5.4e10)).toBe('0.361 AU');
+		expect(formatLength(1e10, { roundKm: true })).toBe('10\u2009000\u2009000 km');
+	});
+});
+
+describe('formatPercent', () => {
+	it('drops needless decimals', () => {
+		expect(formatPercent(0.9)).toBe('90%');
+		expect(formatPercent(0.005)).toBe('0.5%');
 	});
 });
 
@@ -60,11 +70,12 @@ describe('formatThrust, formatSpeed, formatDuration, formatWarp', () => {
 	});
 	it('formats durations the way people say them', () => {
 		expect(formatDuration(43_082)).toBe('11 h 58 min');
+		expect(formatDuration(7200)).toBe('2 h');
 		expect(formatDuration(88 * 86400)).toBe('88.0 d');
 		expect(formatDuration(0.0023)).toBe('2.300 ms');
 	});
 	it('describes the time warp', () => {
 		expect(formatWarp(1)).toBe('1× real time');
-		expect(formatWarp(3600)).toBe('3\u2009600×, a second is 1 h 0 min');
+		expect(formatWarp(3600)).toBe('3\u2009600×, 1 s = 1 h');
 	});
 });

@@ -47,9 +47,18 @@ const METRE_UNITS: [number, string][] = [
 	[1, 'm']
 ];
 
-export function formatLength(metres: number): string {
+/** Percent with at most one decimal and no trailing zero: 90%, 0.5%. */
+export function formatPercent(fraction: number): string {
+	const v = fraction * 100;
+	return `${v >= 10 ? Math.round(v) : Number(v.toPrecision(2))}%`;
+}
+
+/** Kilometres stay kilometres until 0.1 AU; a scale bar keeps round kilometre figures. */
+export function formatLength(metres: number, opts: { roundKm?: boolean } = {}): string {
+	const auCut = opts.roundKm ? 1e12 : 1.495978707e10;
 	const [scale, unit] =
-		METRE_UNITS.find(([s]) => metres >= s) ?? METRE_UNITS[METRE_UNITS.length - 1];
+		METRE_UNITS.find(([s, u]) => metres >= (u === 'AU' ? auCut : s)) ??
+		METRE_UNITS[METRE_UNITS.length - 1];
 	const value = metres / scale;
 	const text =
 		value >= 1000
@@ -124,14 +133,18 @@ export function formatSpeed(v: number): string {
 	return `${v.toPrecision(3)} m/s`;
 }
 
+function tail(big: number, bigUnit: string, small: number, smallUnit: string): string {
+	return small === 0 ? `${big} ${bigUnit}` : `${big} ${bigUnit} ${small} ${smallUnit}`;
+}
+
 /** A span of seconds as people say it: 11 h 58 min, 88 d, 1.2 y, 2.3 ms. */
 export function formatDuration(seconds: number): string {
 	if (!Number.isFinite(seconds)) return '∞';
 	const s = Math.abs(seconds);
 	if (s < 1) return formatDrift(s).slice(1);
 	if (s < 60) return `${s.toPrecision(3)} s`;
-	if (s < 3600) return `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
-	if (s < 86400) return `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`;
+	if (s < 3600) return tail(Math.floor(s / 60), 'min', Math.round(s % 60), 's');
+	if (s < 86400) return tail(Math.floor(s / 3600), 'h', Math.round((s % 3600) / 60), 'min');
 	if (s < 365.25 * 86400) return `${(s / 86400).toPrecision(3)} d`;
 	return `${(s / (365.25 * 86400)).toPrecision(3)} y`;
 }
@@ -139,5 +152,5 @@ export function formatDuration(seconds: number): string {
 /** How fast the simulation runs: 1× real time, or one real second per simulated span. */
 export function formatWarp(warp: number): string {
 	if (warp === 1) return '1× real time';
-	return `${formatMultiplier(warp)}×, a second is ${formatDuration(warp)}`;
+	return `${formatMultiplier(warp)}×, 1 s = ${formatDuration(warp)}`;
 }

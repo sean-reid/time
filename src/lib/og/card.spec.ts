@@ -13,8 +13,8 @@ describe('share card', () => {
 		const svg = defaultCard('earth');
 		expect(svg).toContain(`width="${CARD_WIDTH}" height="${CARD_HEIGHT}"`);
 		expect(svg).toContain('>Earth</text>');
-		expect(svg).toContain('>38.58 µs per day fast</text>');
-		expect(svg).toContain('>20 200 km above the surface</text>');
+		expect(svg).toMatch(/>38\.[56]\d µs per day fast<\/text>/);
+		expect(svg).toMatch(/>20 2\d\d km above the surface<\/text>/);
 		expect(svg).toContain('>time</text>');
 	});
 

@@ -12,6 +12,7 @@ test('the tours page lists four flights that open in the sim', async ({ page }) 
 
 test('next stop advances the flight and leaving returns to a plain scene', async ({ page }) => {
 	await page.goto('/?tour=sgr-a-star');
+	await page.getByRole('button', { name: 'Pause' }).click();
 	await page.getByRole('button', { name: 'Next stop' }).click();
 	await expect(page.getByText(/stop 2 of 5/)).toBeVisible();
 	await page.getByRole('button', { name: 'Next stop' }).click();

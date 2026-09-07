@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('the plate zooms and pans from the keyboard', async ({ page }) => {
 	await page.goto('/');
 	const plate = page.getByRole('application');
-	const body = page.locator('svg circle.body');
+	const body = page.locator('svg circle.central');
 	const before = Number(await body.getAttribute('r'));
 	await plate.focus();
 	await page.keyboard.press('+');

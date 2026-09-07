@@ -181,8 +181,10 @@
 		grid-template-columns: repeat(2, 1fr);
 	}
 	.row button {
-		padding: 0 6px;
+		min-width: 0;
+		padding: 0 4px;
 		font-size: 13px;
+		line-height: 1.2;
 	}
 	label {
 		display: grid;

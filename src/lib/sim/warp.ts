@@ -1,17 +1,18 @@
 import { WARPS } from './defaults';
 
-/** Roughly how many integrator steps one frame can afford, and how many an orbit takes. */
+/** Roughly how many integrator steps one frame can afford, and how many an orbit takes in each regime. */
 const STEPS_PER_FRAME = 20_000;
-const STEPS_PER_ORBIT = 320;
+export const STEPS_PER_ORBIT = { geodesic: 320, newtonian: 3142 } as const;
+export type Regime = keyof typeof STEPS_PER_ORBIT;
 const FRAMES_PER_SECOND = 60;
 /** Frames longer than this are stalls, not measurements. */
 const STALL_SECONDS = 0.25;
 const WINDOW_FRAMES = 12;
 const SHORTFALL = 0.05;
 
-/** Fastest warp the integrator can honour on an orbit of this period. */
-export function warpCap(period: number): number {
-	const budget = STEPS_PER_FRAME * (period / STEPS_PER_ORBIT) * FRAMES_PER_SECOND;
+/** Fastest warp the integrator can honour on an orbit of this period in this regime. */
+export function warpCap(period: number, regime: Regime = 'geodesic'): number {
+	const budget = STEPS_PER_FRAME * (period / STEPS_PER_ORBIT[regime]) * FRAMES_PER_SECOND;
 	const allowed = WARPS.filter((w) => w <= budget);
 	return allowed[allowed.length - 1] ?? WARPS[0];
 }

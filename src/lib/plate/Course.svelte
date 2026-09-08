@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { FlightSample } from '$lib/physics';
 	import type { Scene } from '$lib/sim/scene.svelte';
-	import { Trail, type Point } from './trail';
+	import { flownCount, Trail, type Point } from './trail';
 	import { polarXY, sx, sy, type View } from './view';
 
 	let { view, scene, ship }: { view: View; scene: Scene; ship: Point } = $props();
@@ -30,10 +30,10 @@
 			const p = polarXY(s);
 			return { x: w / 2 + (p.x - origin.x) / mpp, y: h / 2 - (p.y - origin.y) / mpp };
 		};
-		const d = trailCache.extend(pts, key, project);
-		const last = pts[pts.length - 1];
-		if (!last) return '';
-		const p = project(last);
+		const count = flownCount(pts, scene.t);
+		if (count === 0) return '';
+		const d = trailCache.extend(pts, key, project, 1, count);
+		const p = project(scene.ship);
 		return `${d}${d ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
 	});
 	let trailShift = $derived(

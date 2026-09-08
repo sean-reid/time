@@ -146,7 +146,9 @@ export class Scene {
 		this.rebuild();
 	}
 
+	/** Back to the start orbit at its own speed; a tour keeps its scripted flight and replays it. */
 	restart() {
+		if (!this.tour) this.plan = { ...this.plan, manoeuvres: [] };
 		this.t = 0;
 		this.departedAt = Date.now();
 		this.playing = true;

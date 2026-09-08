@@ -138,13 +138,6 @@
 			{:else}
 				<button type="button" disabled={dead} onclick={() => scene.hold()}>Hold station</button>
 			{/if}
-			<button
-				type="button"
-				onclick={() => scene.clearManoeuvres()}
-				disabled={scene.plan.manoeuvres.length === 0}
-			>
-				Undo all
-			</button>
 		</div>
 	</div>
 
@@ -154,12 +147,6 @@
 				<li>
 					<span class="n">{formatDuration(m.at)}</span>
 					<span>{describe(m)}</span>
-					<button
-						type="button"
-						class="remove"
-						onclick={() => scene.removeManoeuvre(i)}
-						aria-label="Remove this manoeuvre">×</button
-					>
 				</li>
 			{/each}
 		</ol>
@@ -237,17 +224,14 @@
 	}
 	.manoeuvres li {
 		display: grid;
-		grid-template-columns: 7ch minmax(0, 1fr) 44px;
-		align-items: center;
+		grid-template-columns: 7ch minmax(0, 1fr);
+		align-items: baseline;
 		gap: 8px;
+		padding: 6px 0;
 		border-bottom: var(--hair) solid var(--rule);
 	}
 	.n {
 		color: var(--ink-soft);
-	}
-	.remove {
-		border: 0;
-		min-height: 44px;
 	}
 	.unit {
 		text-transform: none;

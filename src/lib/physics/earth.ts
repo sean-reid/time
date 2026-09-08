@@ -1,12 +1,11 @@
-import { L_B, L_G } from './constants';
+import { L_B } from './constants';
 
 /**
- * Rate deficit of a sea-level clock relative to the coordinate time of the scene.
- * Scenes centred on Earth use geocentric time; every other scene sits far enough
- * away that Earth's own share of the solar system potential is what remains.
+ * Rate deficit of a sea-level clock relative to barycentric coordinate time. Every scene's
+ * ship deficit is expressed against the same time by adding the scene's own solar share.
  */
-export function earthReferenceDeficit(centreIsEarth: boolean): number {
-	return centreIsEarth ? L_G : L_B;
+export function earthReferenceDeficit(): number {
+	return L_B;
 }
 
 /** Ratio of the ship clock rate to the Earth clock rate, minus one, from the two deficits. */

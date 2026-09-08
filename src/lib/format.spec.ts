@@ -71,7 +71,10 @@ describe('formatThrust, formatSpeed, formatDuration, formatWarp', () => {
 	it('formats durations the way people say them', () => {
 		expect(formatDuration(43_082)).toBe('11 h 58 min');
 		expect(formatDuration(7200)).toBe('2 h');
-		expect(formatDuration(88 * 86400)).toBe('88.0 d');
+		expect(formatDuration(88 * 86400)).toBe('88 d');
+		expect(formatDuration(1000 * 365.25 * 86400)).toBe('1\u2009000 y');
+		expect(formatSpeed(2_839_000)).toBe('2\u2009840 km/s');
+		expect(formatThrust(6e-4 * 9.80665)).toBe('600 μg');
 		expect(formatDuration(0.0023)).toBe('2.300 ms');
 	});
 	it('describes the time warp', () => {

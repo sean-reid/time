@@ -1,10 +1,11 @@
-import { C, C2 } from './constants';
+import { C, C2, G } from './constants';
 import type { Field } from './field';
 import {
 	angularRates,
 	circularOrbit,
 	fromLocal,
 	geometricUnits,
+	MAX_LOCAL_SPEED,
 	metricAt,
 	outerHorizonGeometric,
 	stepGeodesic,
@@ -45,7 +46,14 @@ export interface FlightSample {
 	holding: boolean;
 }
 
-export type FlightEnding = { kind: 'horizon' | 'surface'; t: number; tau: number } | null;
+export type FlightEnding = {
+	kind: 'horizon' | 'surface';
+	t: number;
+	tau: number;
+	/** Clock deficit and gravity where the ship came to rest, for a landing. */
+	deficit?: number;
+	thrust?: number;
+} | null;
 
 /** A companion whose pull the ship feels in the Newtonian regime. */
 export interface Attractor {
@@ -93,7 +101,20 @@ export class Trajectory {
 				: new NewtonianStepper(space, plan.start);
 		this.queue = [...plan.manoeuvres].sort((a, b) => a.at - b.at);
 		if (plan.start.kind === 'hold') this.stepper.hold(Infinity);
+		this.applyDue(0);
 		this.push(this.stepper.sample(), true);
+	}
+
+	/** Apply every queued manoeuvre whose time has come. */
+	private applyDue(now: number): boolean {
+		let applied = false;
+		while (this.queue.length && this.queue[0].at <= now + 1e-9) {
+			const next = this.queue.shift()!;
+			if (next.kind === 'kick') this.stepper.kick(next.dv, next.heading);
+			else this.stepper.hold(next.duration);
+			applied = true;
+		}
+		return applied;
 	}
 
 	get last(): FlightSample {
@@ -103,16 +124,11 @@ export class Trajectory {
 	/** Integrate until coordinate time tMax or the flight ends; bounded work per call. */
 	ensure(tMax: number): void {
 		let steps = 0;
-		while (!this.ending && this.last.t < tMax && steps++ < MAX_STEPS_PER_ENSURE) {
+		while (!this.ending && steps++ < MAX_STEPS_PER_ENSURE) {
+			if (this.applyDue(this.last.t)) this.push(this.stepper.sample(), true);
+			if (this.last.t >= tMax) break;
 			const next = this.queue[0];
 			const target = next ? Math.min(tMax, next.at) : tMax;
-			if (next && this.last.t >= next.at - 1e-9) {
-				this.queue.shift();
-				if (next.kind === 'kick') this.stepper.kick(next.dv, next.heading);
-				else this.stepper.hold(next.duration);
-				this.push(this.stepper.sample(), true);
-				continue;
-			}
 			const alive = this.stepper.step(target - this.last.t);
 			this.push(this.stepper.sample(), !alive);
 			if (!alive) this.ending = this.stepper.ending;
@@ -167,9 +183,11 @@ class GeodesicStepper implements Stepper {
 	private horizon: number;
 	private surface: number;
 	private holdLeft = 0;
+	private direction: 1 | -1;
 	ending: FlightEnding = null;
 
 	constructor(space: Space, start: Start) {
+		this.direction = start.direction;
 		const u = geometricUnits(space.field.mass);
 		this.len = u.length;
 		this.time = u.time;
@@ -216,7 +234,16 @@ class GeodesicStepper implements Stepper {
 		if (this.holdLeft > 0) {
 			const use = Math.min(dtGeo, this.holdLeft);
 			const rest = fromLocal(this.state.r, this.a, 0, 0);
-			this.state = { ...this.state, t: this.state.t + use, ur: 0, E: rest.E, L: rest.L };
+			const m = metricAt(this.state.r, this.a);
+			const dragged = (-m.gtp / m.gpp) * use;
+			this.state = {
+				...this.state,
+				t: this.state.t + use,
+				phi: this.state.phi + dragged,
+				ur: 0,
+				E: rest.E,
+				L: rest.L
+			};
 			this.tau += use / rest.ut;
 			this.holdLeft -= use;
 			return true;
@@ -242,7 +269,8 @@ class GeodesicStepper implements Stepper {
 		const { ut, up } = angularRates(metricAt(s.r, this.a), s.E, s.L);
 		const v = toLocal(s.r, this.a, ut, up, s.ur);
 		const speed = Math.hypot(v.vr, v.vphi);
-		const along = speed > 1e-9 ? { r: v.vr / speed, p: v.vphi / speed } : { r: 0, p: 1 };
+		const along =
+			speed > 1e-9 ? { r: v.vr / speed, p: v.vphi / speed } : { r: 0, p: this.direction };
 		const dir = directionVector(heading, along);
 		const dvc = dv / C;
 		const next = fromLocal(s.r, this.a, v.vr + dvc * dir.r, v.vphi + dvc * dir.p);
@@ -265,22 +293,34 @@ class NewtonianStepper implements Stepper {
 	private tau = 0;
 	private phi: number;
 	private holdLeft = 0;
+	private direction: 1 | -1;
 	ending: FlightEnding = null;
 
 	constructor(
 		private space: Space,
 		start: Start
 	) {
+		this.direction = start.direction;
 		this.x = start.r * Math.cos(start.phi);
 		this.y = start.r * Math.sin(start.phi);
 		this.phi = start.phi;
-		const v = Math.sqrt((space.field.mass * 6.6743e-11) / start.r);
+		const v = Math.sqrt((space.field.mass * G) / start.r);
 		this.vx = -start.direction * v * Math.sin(start.phi);
 		this.vy = start.direction * v * Math.cos(start.phi);
 	}
 
 	private mu(): number {
-		return this.space.field.mass * 6.6743e-11;
+		return this.space.field.mass * G;
+	}
+
+	private keplerCache: { t: number; states: { x: number; y: number }[] } | null = null;
+
+	/** Companion positions at t, solved once per distinct time since RK4 asks several times per step. */
+	private companionsAt(t: number): { x: number; y: number }[] {
+		if (this.keplerCache && this.keplerCache.t === t) return this.keplerCache.states;
+		const states = this.space.attractors.map((c) => keplerState(c.elements, this.space.epoch + t));
+		this.keplerCache = { t, states };
+		return states;
 	}
 
 	private pulls(
@@ -298,13 +338,15 @@ class NewtonianStepper implements Stepper {
 		ay -= (mu * y) / (r * r * r);
 		grav += mu / (r * C2);
 		if (r <= this.space.field.surface) hit = true;
-		for (const c of this.space.attractors) {
-			const p = keplerState(c.elements, this.space.epoch + t);
+		const positions = this.companionsAt(t);
+		for (const [i, c] of this.space.attractors.entries()) {
+			const p = positions[i];
 			const dx = x - p.x;
 			const dy = y - p.y;
 			const d = Math.hypot(dx, dy);
-			ax -= (c.mu * dx) / (d * d * d);
-			ay -= (c.mu * dy) / (d * d * d);
+			const pr = Math.hypot(p.x, p.y);
+			ax -= (c.mu * dx) / (d * d * d) + (c.mu * p.x) / (pr * pr * pr);
+			ay -= (c.mu * dy) / (d * d * d) + (c.mu * p.y) / (pr * pr * pr);
 			grav += c.mu / (d * C2);
 			if (d <= c.radius) hit = true;
 		}
@@ -331,8 +373,9 @@ class NewtonianStepper implements Stepper {
 
 	private timescale(): number {
 		let h = 0.002 * Math.sqrt(Math.hypot(this.x, this.y) ** 3 / this.mu());
-		for (const c of this.space.attractors) {
-			const p = keplerState(c.elements, this.space.epoch + this.t);
+		const positions = this.companionsAt(this.t);
+		for (const [i, c] of this.space.attractors.entries()) {
+			const p = positions[i];
 			const d = Math.hypot(this.x - p.x, this.y - p.y);
 			h = Math.min(h, 0.002 * Math.sqrt(d ** 3 / c.mu));
 		}
@@ -349,6 +392,8 @@ class NewtonianStepper implements Stepper {
 			return true;
 		}
 		const h = Math.min(dt, this.timescale());
+		const [x0, y0, t0, tau0] = [this.x, this.y, this.t, this.tau];
+		const r0 = Math.hypot(x0, y0);
 		const f = (x: number, y: number, vx: number, vy: number, t: number) => {
 			const p = this.pulls(x, y, t);
 			return [vx, vy, p.ax, p.ay];
@@ -388,8 +433,22 @@ class NewtonianStepper implements Stepper {
 		let d = raw - (((this.phi % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) + Math.PI;
 		d = ((d % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
 		this.phi += d > Math.PI ? d - 2 * Math.PI : d;
-		if (this.pulls(this.x, this.y, this.t).hit) {
-			this.ending = { kind: 'surface', t: this.t, tau: this.tau };
+		const after = this.pulls(this.x, this.y, this.t);
+		if (after.hit) {
+			const r1 = Math.hypot(this.x, this.y);
+			const f = Math.min(1, Math.max(0, (r0 - this.space.field.surface) / Math.max(1e-9, r0 - r1)));
+			this.x = x0 + (this.x - x0) * f;
+			this.y = y0 + (this.y - y0) * f;
+			this.t = t0 + h * f;
+			this.tau = tau0 + (this.tau - tau0) * f;
+			const rest = this.pulls(this.x, this.y, this.t);
+			this.ending = {
+				kind: 'surface',
+				t: this.t,
+				tau: this.tau,
+				deficit: rest.grav,
+				thrust: Math.hypot(rest.ax, rest.ay)
+			};
 			return false;
 		}
 		return true;
@@ -405,6 +464,12 @@ class NewtonianStepper implements Stepper {
 		const dir = directionVectorXY(heading, along, rhat);
 		this.vx += dv * dir.x;
 		this.vy += dv * dir.y;
+		const after = Math.hypot(this.vx, this.vy);
+		const cap = MAX_LOCAL_SPEED * C;
+		if (after > cap) {
+			this.vx *= cap / after;
+			this.vy *= cap / after;
+		}
 	}
 
 	hold(duration: number): void {

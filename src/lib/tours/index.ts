@@ -7,7 +7,7 @@ import {
 	formatSpeed,
 	formatThrust
 } from '$lib/format';
-import { AU, C, GM_EARTH, GM_SUN, type FlightSample, type Plan } from '$lib/physics';
+import { AU, C, GM_EARTH, GM_SUN, R_SUN, type FlightSample, type Plan } from '$lib/physics';
 import { fieldFor, type Camera } from '$lib/sim/defaults';
 import type { Scene } from '$lib/sim/scene.svelte';
 
@@ -30,7 +30,7 @@ export interface Tour {
 	stops: Stop[];
 }
 
-const rate = (s: Scene) => formatRelativeRate(s.ship.deficit, s.earthDeficit);
+const rate = (s: Scene) => formatRelativeRate(s.shipDeficit, s.earthDeficit);
 const up = (s: Scene) => formatLength(s.ship.r - s.field.surface);
 const thrust = (s: Scene) => formatThrust(s.ship.thrust);
 const speed = (s: Scene) => formatSpeed(s.ship.speed);
@@ -118,7 +118,7 @@ function sunDive(): Tour {
 			},
 			{
 				when: (smp, s) => s.ship.phase === 'landed',
-				frame: 12 * 6.957e8,
+				frame: 12 * R_SUN,
 				text: (s) =>
 					`You reached the photosphere at ${formatClock(s.shipMs)} on your clock, ${formatDrift(s.drift).slice(1)} behind Earth. Standing here takes ${thrust(s)}.`
 			}
@@ -135,7 +135,7 @@ function neutronStar(): Tour {
 	return {
 		id: 'neutron-star',
 		title: 'The clock you can see slowing',
-		blurb: 'A two solar mass pulsar twelve kilometres across. Brake, and skim its surface.',
+		blurb: 'A two solar mass pulsar twelve kilometres in radius. Brake, and swing low over it.',
 		body,
 		plan: {
 			start: { r: r0, phi: -Math.PI / 4, kind: 'orbit', direction: 1 },
@@ -153,12 +153,13 @@ function neutronStar(): Tour {
 				when: (smp) => smp.t >= 4,
 				frame: 2.8 * r0,
 				text: (s) =>
-					`A retrograde kick puts you on an ellipse that grazes the star. Each pass at the low point, ${rate(s)}, and the hand lags more.`
+					`A retrograde kick puts you on an ellipse that swings low over the star. Each pass at the low point, ${rate(s)}, and the hand lags more.`
 			},
 			{
-				when: (smp) => smp.t > 4 && smp.r < 1.6 * R,
+				when: (smp) => smp.t > 4 && smp.r < 2.6 * R,
 				frame: 6 * R,
-				text: (s) => `${cap(up(s))} above the surface at ${speed(s)}: ${rate(s)}.`
+				text: (s) =>
+					`Low point of the ellipse, ${up(s)} above the surface at ${speed(s)}: ${rate(s)}.`
 			}
 		]
 	};
@@ -168,7 +169,7 @@ function sgrA(): Tour {
 	const body = bodyById('sgr-a-star');
 	const field = fieldFor(body);
 	const isco = field.isco(1);
-	const ergo = 2 * (field.surface / (1 + Math.sqrt(1 - field.spin ** 2)));
+	const ergo = field.ergosphere!;
 	const r0 = 4 * isco;
 	return {
 		id: 'sgr-a-star',
@@ -204,7 +205,7 @@ function sgrA(): Tour {
 				when: (smp) => smp.r < ergo,
 				frame: 3 * ergo,
 				text: (s) =>
-					`Inside the ergosphere nothing can stay still; dragged space sweeps you around. ${cap(rate(s))}.`
+					`Inside the ergosphere nothing can stay still; dragged space sweeps you around as you fall. ${cap(rate(s))}.`
 			},
 			{
 				when: (smp, s) => s.ship.phase === 'horizon',

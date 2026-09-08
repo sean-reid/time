@@ -205,10 +205,10 @@ function planet(
 			note: 'Sidereal orbit period.'
 		},
 		argumentOfPeriapsis: {
-			value: degrees(el.longitudeOfPerihelion - el.longitudeOfNode),
+			value: degrees(el.longitudeOfPerihelion),
 			unit: '1',
 			source: jplElements,
-			note: 'Longitude of perihelion minus longitude of the ascending node at J2000, in the ecliptic.'
+			note: 'Longitude of perihelion at J2000, the in-plane direction once inclination is dropped.'
 		},
 		meanAnomalyAtEpoch: {
 			value: degrees(el.meanLongitude - el.longitudeOfPerihelion),

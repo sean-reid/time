@@ -14,7 +14,8 @@ export const AU = 1.495978707e11;
 export const L_G = 6.969290134e-10;
 /** IAU 2006 B3: rate deficit of a sea-level clock relative to barycentric coordinate time. */
 export const L_B = 1.550519768e-8;
+/** IAU 2000 B1.5: mean rate deficit of geocentric time relative to barycentric time, the Sun's share at Earth. */
+export const L_C = 1.48082686741e-8;
 
-export const EARTH_ROTATION = 7.292115e-5;
 export const SECONDS_PER_DAY = 86_400;
 export const SECONDS_PER_YEAR = 365.25 * SECONDS_PER_DAY;

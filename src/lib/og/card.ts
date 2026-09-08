@@ -1,7 +1,7 @@
 import type { Body } from '$lib/catalogue';
 import { formatLength, formatRelativeRate } from '$lib/format';
 import { earthReferenceDeficit, Trajectory, type FlightSample, type Plan } from '$lib/physics';
-import { fieldFor, spaceFor } from '$lib/sim/defaults';
+import { fieldFor, solarDeficit, spaceFor } from '$lib/sim/defaults';
 
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
@@ -18,6 +18,8 @@ const DRAWING_CX = CARD_WIDTH - MARGIN - DRAWING_RADIUS;
 const DRAWING_CY = CARD_HEIGHT / 2;
 const TEXT_WIDTH = DRAWING_CX - DRAWING_RADIUS - 60 - MARGIN;
 const HAIRLINE = 1.5;
+/** A card never integrates more than this many start orbits, whatever the link asks for. */
+const CARD_MAX_PERIODS = 20;
 const MAX_PATH_POINTS = 600;
 
 /** Glyphs the latin subset of the site font lacks, swapped for the same mark in a codepoint it has. */
@@ -78,17 +80,17 @@ export function cardSvg(body: Body, plan: Plan, wallMs = Date.now()): string {
 	const started = plan.start.r > field.surface;
 	const traj = started ? new Trajectory(spaceFor(body, wallMs), plan) : null;
 	if (traj) {
-		const span = Math.max(
-			field.orbitPeriod(plan.start.r, plan.start.direction) * 2,
-			...plan.manoeuvres.map((m) => m.at * 1.2)
-		);
-		for (let i = 0; i < 6 && !traj.ending && traj.last.t < span; i++) traj.ensure(span);
+		const period = field.orbitPeriod(plan.start.r, plan.start.direction);
+		const lastAt = Math.max(0, ...plan.manoeuvres.map((m) => m.at));
+		const span = Math.min(Math.max(2 * period, lastAt + period), CARD_MAX_PERIODS * period);
+		for (let i = 0; i < 2 && !traj.ending && traj.last.t < span; i++) traj.ensure(span);
 	}
 	const samples: FlightSample[] = traj ? traj.samples : [];
 	const end = traj ? traj.last : null;
 	const stopped = !traj || traj.ending?.kind === 'horizon' || !end || !Number.isFinite(end.deficit);
-	const deficit = stopped ? 1 : end!.deficit;
-	const rate = formatRelativeRate(deficit, earthReferenceDeficit(body.id === 'earth'));
+	const solar = solarDeficit(body);
+	const deficit = stopped ? 1 : end!.deficit + solar - end!.deficit * solar;
+	const rate = formatRelativeRate(deficit, earthReferenceDeficit());
 	const floor = field.horizon === null ? 'surface' : 'horizon';
 	const altitude = end ? end.r - field.surface : 0;
 	const where =

@@ -1,4 +1,6 @@
-import type { Heading, Manoeuvre, Plan } from '$lib/physics';
+import { findBody } from '$lib/catalogue';
+import { C, type Heading, type Manoeuvre, type Plan } from '$lib/physics';
+import { WARPS, type Camera } from './defaults';
 
 export interface SceneSnapshot {
 	body: string;
@@ -6,10 +8,16 @@ export interface SceneSnapshot {
 	warp: number;
 	/** Coordinate seconds into the flight. */
 	t: number;
-	camera?: { frame: number; cx: number; cy: number; follow: boolean };
+	camera?: Camera;
 }
 
+/** Wire order of headings; changing it would corrupt every shared link. */
 const HEADINGS: Heading[] = ['prograde', 'retrograde', 'outward', 'inward'];
+/** Wire value for a hold that lasts until the ship is let go. */
+const OPEN_HOLD = -1;
+/** Longest flight a link may describe, in coordinate seconds: about thirty thousand years. */
+export const MAX_LINK_SECONDS = 1e12;
+const MAX_MANOEUVRES = 64;
 
 type PackedManoeuvre = [number, 'k', number, number] | [number, 'h', number];
 type Packed = [
@@ -27,13 +35,25 @@ function sig(n: number, digits: number): number {
 
 function pack(m: Manoeuvre): PackedManoeuvre {
 	if (m.kind === 'kick') return [sig(m.at, 9), 'k', sig(m.dv, 6), HEADINGS.indexOf(m.heading)];
-	return [sig(m.at, 9), 'h', sig(m.duration, 6)];
+	return [sig(m.at, 9), 'h', m.duration === Infinity ? OPEN_HOLD : sig(m.duration, 6)];
 }
 
-function unpack(p: PackedManoeuvre): Manoeuvre {
-	if (p[1] === 'k')
-		return { at: p[0], kind: 'kick', dv: p[2], heading: HEADINGS[p[3]] ?? 'prograde' };
-	return { at: p[0], kind: 'hold', duration: p[2] };
+function finite(n: unknown, min: number, max: number): n is number {
+	return typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
+}
+
+function unpack(p: unknown): Manoeuvre | null {
+	if (!Array.isArray(p) || !finite(p[0], 0, MAX_LINK_SECONDS)) return null;
+	if (p[1] === 'k') {
+		if (!finite(p[2], 0, C) || !finite(p[3], 0, HEADINGS.length - 1)) return null;
+		return { at: p[0], kind: 'kick', dv: p[2], heading: HEADINGS[Math.round(p[3])] };
+	}
+	if (p[1] === 'h') {
+		if (p[2] === OPEN_HOLD) return { at: p[0], kind: 'hold', duration: Infinity };
+		if (!finite(p[2], 0, MAX_LINK_SECONDS)) return null;
+		return { at: p[0], kind: 'hold', duration: p[2] };
+	}
+	return null;
 }
 
 function toBase64Url(s: string): string {
@@ -68,33 +88,49 @@ export function encodeScene(s: SceneSnapshot): string {
 	return toBase64Url(JSON.stringify(packed));
 }
 
+/** Decode a link, or null when any part of it is not a scene this site can show. */
 export function decodeScene(encoded: string): SceneSnapshot | null {
 	try {
-		const p = JSON.parse(fromBase64Url(encoded)) as Packed;
-		if (typeof p[0] !== 'string' || !Array.isArray(p[1]) || !Array.isArray(p[2])) return null;
-		const [r, phi, kind, direction] = p[1];
+		const p = JSON.parse(fromBase64Url(encoded)) as unknown[];
+		if (!Array.isArray(p) || typeof p[0] !== 'string' || !findBody(p[0])) return null;
+		const st = p[1];
+		if (!Array.isArray(st) || !finite(st[0], 1, 1e30) || !finite(st[1], -1e6, 1e6)) return null;
+		if (!Array.isArray(p[2]) || p[2].length > MAX_MANOEUVRES) return null;
+		const manoeuvres: Manoeuvre[] = [];
+		for (const raw of p[2]) {
+			const m = unpack(raw);
+			if (!m) return null;
+			manoeuvres.push(m);
+		}
+		const rawWarp = p[3];
+		if (!finite(rawWarp, 1, WARPS[WARPS.length - 1]) || !finite(p[4], 0, MAX_LINK_SECONDS))
+			return null;
+		const warp = WARPS.reduce((best, w) =>
+			Math.abs(w - rawWarp) < Math.abs(best - rawWarp) ? w : best
+		);
 		const snapshot: SceneSnapshot = {
 			body: p[0],
 			plan: {
 				start: {
-					r,
-					phi,
-					kind: kind === 'h' ? 'hold' : 'orbit',
-					direction: direction === -1 ? -1 : 1
+					r: st[0],
+					phi: st[1],
+					kind: st[2] === 'h' ? 'hold' : 'orbit',
+					direction: st[3] === -1 ? -1 : 1
 				},
-				manoeuvres: p[2].map(unpack)
+				manoeuvres
 			},
-			warp: p[3],
+			warp,
 			t: p[4]
 		};
 		const cam = p[5];
-		if (cam && cam.length === 4) {
-			snapshot.camera = {
-				frame: cam[0] as number,
-				cx: cam[1] as number,
-				cy: cam[2] as number,
-				follow: cam[3] as boolean
-			};
+		if (
+			Array.isArray(cam) &&
+			cam.length === 4 &&
+			finite(cam[0], 1, 1e30) &&
+			finite(cam[1], -1e30, 1e30) &&
+			finite(cam[2], -1e30, 1e30)
+		) {
+			snapshot.camera = { frame: cam[0], cx: cam[1], cy: cam[2], follow: cam[3] === true };
 		}
 		return snapshot;
 	} catch {

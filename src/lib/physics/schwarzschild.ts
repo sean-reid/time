@@ -46,10 +46,3 @@ export function circularOrbitLocalSpeed(mass: number, r: number): number {
 export function circularOrbitPeriod(mass: number, r: number): number {
 	return 2 * Math.PI * Math.sqrt((r * r * r) / (G * mass));
 }
-
-/** Rate deficit of a clock moving at local speed v past static observers at r. */
-export function movingDeficit(mass: number, r: number, v: number): number {
-	const g = staticDeficit(mass, r);
-	const k = sqrtDeficit((v * v) / C2);
-	return g + k - g * k;
-}

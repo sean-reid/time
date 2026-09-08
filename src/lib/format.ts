@@ -1,3 +1,5 @@
+import { relativeRateMinusOne } from '$lib/physics/earth';
+
 const SECOND_UNITS: [number, string][] = [
 	[365.25 * 86400, 'y'],
 	[86400, 'd'],
@@ -88,6 +90,13 @@ function superscript(n: number): string {
 		.join('');
 }
 
+/** Three significant figures without exponent notation, grouped with thin spaces above 999. */
+function sig3(x: number): string {
+	const v = Number(x.toPrecision(3));
+	if (v >= 1000) return Math.round(v).toLocaleString('en-US').replaceAll(',', THIN_SPACE);
+	return String(v);
+}
+
 /** A positive multiplier: 1.41, 12.3, 3 200, or 3.2×10⁹. */
 export function formatMultiplier(x: number): string {
 	if (!Number.isFinite(x)) return '∞';
@@ -106,7 +115,7 @@ export function formatMultiplier(x: number): string {
 /** Ship rate against Earth from the two deficits, as a sentence fragment. */
 export function formatRelativeRate(shipDeficit: number, earthDeficit: number): string {
 	if (shipDeficit >= 1) return 'stopped, as Earth sees it';
-	const ratioMinusOne = (earthDeficit - shipDeficit) / (1 - earthDeficit);
+	const ratioMinusOne = relativeRateMinusOne(shipDeficit, earthDeficit);
 	if (Math.abs(ratioMinusOne) < 1e-3) return formatRatePerDay(1 + ratioMinusOne);
 	const times = (m: string) => (m.includes('×10') ? `${m} times` : `${m}×`);
 	if (ratioMinusOne < 0)
@@ -120,7 +129,7 @@ export function formatThrust(accel: number): string {
 	const g = accel / STANDARD_GRAVITY;
 	if (!Number.isFinite(g)) return 'beyond any engine';
 	if (g === 0) return '0 g, free fall';
-	if (g < 1e-3) return `${(g * 1e6).toPrecision(2)} μg`;
+	if (g < 1e-3) return `${sig3(g * 1e6)} μg`;
 	if (g < 1) return `${g.toPrecision(2)} g`;
 	return `${formatMultiplier(g)} g`;
 }
@@ -128,7 +137,7 @@ export function formatThrust(accel: number): string {
 export function formatSpeed(v: number): string {
 	const c = 299_792_458;
 	if (v >= 0.01 * c) return `${(v / c).toFixed(v / c >= 0.1 ? 2 : 3)} c`;
-	if (v >= 1e3) return `${(v / 1e3).toPrecision(3)} km/s`;
+	if (v >= 1e3) return `${sig3(v / 1e3)} km/s`;
 	if (v === 0) return '0 m/s';
 	return `${v.toPrecision(3)} m/s`;
 }
@@ -142,11 +151,11 @@ export function formatDuration(seconds: number): string {
 	if (!Number.isFinite(seconds)) return '∞';
 	const s = Math.abs(seconds);
 	if (s < 1) return formatDrift(s).slice(1);
-	if (s < 60) return `${s.toPrecision(3)} s`;
+	if (s < 60) return `${sig3(s)} s`;
 	if (s < 3600) return tail(Math.floor(s / 60), 'min', Math.round(s % 60), 's');
 	if (s < 86400) return tail(Math.floor(s / 3600), 'h', Math.round((s % 3600) / 60), 'min');
-	if (s < 365.25 * 86400) return `${(s / 86400).toPrecision(3)} d`;
-	return `${(s / (365.25 * 86400)).toPrecision(3)} y`;
+	if (s < 365.25 * 86400) return `${sig3(s / 86400)} d`;
+	return `${sig3(s / (365.25 * 86400))} y`;
 }
 
 /** How fast the simulation runs: 1× real time, or one real second per simulated span. */

@@ -30,4 +30,29 @@ describe('scene url', () => {
 		expect(decodeScene('not base64!!')).toBeNull();
 		expect(decodeScene(btoa('{"a":1}'))).toBeNull();
 	});
+
+	const enc = (v: unknown) => btoa(JSON.stringify(v)).replaceAll('+', '-').replaceAll('/', '_');
+
+	it('rejects unknown bodies, wrong types, and absurd numbers', () => {
+		expect(decodeScene(enc(['planet-x', [1e7, 0, 'o', 1], [], 1, 0]))).toBeNull();
+		expect(decodeScene(enc(['earth', [], [], 'x', null]))).toBeNull();
+		expect(decodeScene(enc(['earth', [1e7, 0, 'o', 1], [[5, 'k']], 1, 0]))).toBeNull();
+		expect(decodeScene(enc(['earth', [1e7, 0, 'o', 1], [[1e30, 'k', 1, 0]], 1, 0]))).toBeNull();
+		expect(decodeScene(enc(['earth', [1e7, 0, 'o', 1], [], 1, 1e300]))).toBeNull();
+		expect(decodeScene(enc(['earth', [1e7, 0, 'o', 1], [], 1e300, 0]))).toBeNull();
+	});
+
+	it('keeps an open-ended hold through the link and snaps odd warps to the table', () => {
+		const s = encodeScene({
+			body: 'earth',
+			plan: {
+				start: { r: 1e7, phi: 0, kind: 'orbit', direction: 1 },
+				manoeuvres: [{ at: 5, kind: 'hold', duration: Infinity }]
+			},
+			warp: 1,
+			t: 0
+		});
+		expect(decodeScene(s)?.plan.manoeuvres[0]).toEqual({ at: 5, kind: 'hold', duration: Infinity });
+		expect(decodeScene(enc(['earth', [1e7, 0, 'o', 1], [], 700, 0]))?.warp).toBe(600);
+	});
 });

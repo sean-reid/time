@@ -1,7 +1,10 @@
-import { bodyById, type Body, type Companion } from '$lib/catalogue';
+import { bodies, bodyById, type Body, type Companion } from '$lib/catalogue';
 import {
+	C2,
 	G,
+	GM_SUN,
 	J2000_MS,
+	L_C,
 	makeField,
 	type Attractor,
 	type Elements,
@@ -52,6 +55,27 @@ export function attractorsFor(body: Body): Attractor[] {
 			elements: elementsOf(c)
 		};
 	});
+}
+
+/**
+ * The Sun's share of a scene's clock deficit: potential plus orbital speed averaged over the
+ * scene body's heliocentric orbit, 1.5 GM/(a c²). Earth and the Moon use the IAU value L_C.
+ */
+export function solarDeficit(body: Body): number {
+	if (body.id === 'sun') return 0;
+	let target: Body | undefined = body;
+	while (target) {
+		if (target.id === 'earth' || target.id === 'moon') return L_C;
+		const sun = bodyById('sun');
+		const orbit = sun.companions?.find((c) => c.body === target!.id);
+		if (orbit) return (1.5 * GM_SUN) / (orbit.semiMajorAxis.value * C2);
+		const primary = (bodies as readonly Body[]).find((p) =>
+			p.companions?.some((c) => c.body === target!.id)
+		);
+		if (!primary || primary.id === 'sun') return 0;
+		target = primary;
+	}
+	return 0;
 }
 
 export function spaceFor(body: Body, wallMs: number): Space {

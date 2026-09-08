@@ -142,3 +142,55 @@ describe('trajectory, solar scene', () => {
 		expect(traj.last.deficit * 1e8).toBeCloseTo(1.48, 1);
 	});
 });
+
+describe('trajectory, manoeuvre timing and limits', () => {
+	it('applies a manoeuvre due at the current time before the flight is read', () => {
+		const traj = new Trajectory(earth, {
+			start: { r: gps, phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: [{ at: 100, kind: 'hold', duration: Infinity }]
+		});
+		traj.ensure(100);
+		expect(traj.stateAt(100).holding).toBe(true);
+		const kicked = new Trajectory(earth, {
+			start: { r: gps, phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: [{ at: 0, kind: 'kick', dv: 1000, heading: 'prograde' }]
+		});
+		expect(kicked.stateAt(0).speed).toBeGreaterThan(Math.sqrt(GM_EARTH / gps) + 900);
+	});
+
+	it('never reports a local speed at or above light after stacked kicks', () => {
+		const r = 4 * holeField.isco(1);
+		const traj = new Trajectory(hole, {
+			start: { r, phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: [
+				{ at: 1, kind: 'kick', dv: 0.5 * C, heading: 'prograde' },
+				{ at: 2, kind: 'kick', dv: 0.5 * C, heading: 'outward' },
+				{ at: 3, kind: 'kick', dv: 0.5 * C, heading: 'prograde' }
+			]
+		});
+		traj.ensure(50);
+		for (const s of traj.samples) expect(s.speed).toBeLessThan(C);
+		const fast = new Trajectory(earth, {
+			start: { r: gps, phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: [{ at: 1, kind: 'kick', dv: 2 * C, heading: 'outward' }]
+		});
+		fast.ensure(10);
+		expect(fast.last.speed).toBeLessThan(C);
+	});
+
+	it('outward and inward kicks move the orbit the right way', () => {
+		const period = circularOrbitPeriod(earthField.mass, gps);
+		const out = new Trajectory(earth, {
+			start: { r: gps, phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: [{ at: 0, kind: 'kick', dv: 500, heading: 'outward' }]
+		});
+		out.ensure(period / 4);
+		expect(out.last.r).toBeGreaterThan(gps);
+		const inward = new Trajectory(hole, {
+			start: { r: 6 * holeField.isco(1), phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: [{ at: 0, kind: 'kick', dv: 0.05 * C, heading: 'inward' }]
+		});
+		inward.ensure(holeField.orbitPeriod(6 * holeField.isco(1), 1) / 4);
+		expect(inward.last.r).toBeLessThan(6 * holeField.isco(1));
+	});
+});

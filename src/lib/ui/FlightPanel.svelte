@@ -104,7 +104,7 @@
 				onclick={() => scene.setStart({ kind: 'orbit', direction: -1 })}
 				aria-pressed={scene.plan.start.kind === 'orbit' && scene.plan.start.direction === -1}
 			>
-				Retrograde
+				Orbit, retrograde
 			</button>
 			<button
 				type="button"

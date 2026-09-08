@@ -142,7 +142,9 @@ export function formatSpeed(v: number): string {
 	return `${v.toPrecision(3)} m/s`;
 }
 
-function tail(big: number, bigUnit: string, small: number, smallUnit: string): string {
+function split(whole: number, per: number, bigUnit: string, smallUnit: string): string {
+	const big = Math.floor(whole / per);
+	const small = whole - big * per;
 	return small === 0 ? `${big} ${bigUnit}` : `${big} ${bigUnit} ${small} ${smallUnit}`;
 }
 
@@ -152,8 +154,10 @@ export function formatDuration(seconds: number): string {
 	const s = Math.abs(seconds);
 	if (s < 1) return formatDrift(s).slice(1);
 	if (s < 60) return `${sig3(s)} s`;
-	if (s < 3600) return tail(Math.floor(s / 60), 'min', Math.round(s % 60), 's');
-	if (s < 86400) return tail(Math.floor(s / 3600), 'h', Math.round((s % 3600) / 60), 'min');
+	const whole = Math.round(s);
+	if (whole < 3600) return split(whole, 60, 'min', 's');
+	const minutes = Math.round(s / 60);
+	if (minutes < 1440) return split(minutes, 60, 'h', 'min');
 	if (s < 365.25 * 86400) return `${sig3(s / 86400)} d`;
 	return `${sig3(s / (365.25 * 86400))} y`;
 }

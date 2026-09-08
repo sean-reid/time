@@ -16,3 +16,16 @@ test('a kick bends the running flight without replaying it', async ({ page }) =>
 	const after = (await course.getAttribute('d'))?.match(/^M\s*(-?\d+)\S*\s+(-?\d+)/);
 	expect(after?.slice(1)).toEqual(origin?.slice(1));
 });
+
+test('restart puts the ship back on its start orbit without the kicks', async ({ page }) => {
+	await page.goto('/');
+	const faster = page.getByRole('button', { name: 'Speed time up' });
+	for (let i = 0; i < 4; i++) await faster.click();
+	await page.getByRole('button', { name: '50%' }).click();
+	await page.getByRole('button', { name: 'Retrograde', exact: true }).click();
+	await expect(page.getByRole('button', { name: 'Undo all' })).toBeEnabled();
+	await page.getByRole('button', { name: 'Restart' }).click();
+	await expect(page.getByRole('button', { name: 'Undo all' })).toBeDisabled();
+	await expect(page.locator('.timeline input')).toHaveValue(/^\d+(\.\d+)?$/);
+	await expect(page.locator('dd').filter({ hasText: /per revolution/ })).toBeVisible();
+});

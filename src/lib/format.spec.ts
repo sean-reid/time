@@ -70,6 +70,8 @@ describe('formatThrust, formatSpeed, formatDuration, formatWarp', () => {
 	});
 	it('formats durations the way people say them', () => {
 		expect(formatDuration(43_082)).toBe('11 h 58 min');
+		expect(formatDuration(359.64)).toBe('6 min');
+		expect(formatDuration(3599.7)).toBe('1 h');
 		expect(formatDuration(7200)).toBe('2 h');
 		expect(formatDuration(88 * 86400)).toBe('88 d');
 		expect(formatDuration(1000 * 365.25 * 86400)).toBe('1\u2009000 y');

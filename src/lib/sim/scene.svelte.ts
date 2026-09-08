@@ -185,11 +185,10 @@ export class Scene {
 		this.overCap = 0;
 	}
 
-	/** Move the clock; scrubbing before the kept path replays the flight. */
+	/** Move the clock anywhere along the flight; the kept path always reaches back to the start. */
 	seek(t: number) {
 		this.t = Math.max(0, t);
-		if (this.t < this.trajectory.samples[0].t) this.rebuild();
-		else this.samplesVersion += 1;
+		this.samplesVersion += 1;
 	}
 
 	advance(realSeconds: number) {

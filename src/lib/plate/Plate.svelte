@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { epochSeconds } from '$lib/sim/defaults';
 	import type { Scene } from '$lib/sim/scene.svelte';
 	import { Gestures, panCamera, zoomCamera } from './camera';
+	import Captions from './Captions.svelte';
 	import Companions from './Companions.svelte';
 	import Course from './Course.svelte';
 	import Grid from './Grid.svelte';
+	import { companionPaths, companionsNow, isochroneRings, landmarkRings } from './landmarks';
 	import Rings from './Rings.svelte';
 	import ScaleBar from './ScaleBar.svelte';
 	import { polarXY, type View } from './view';
@@ -36,6 +39,12 @@
 
 	let field = $derived(scene.field);
 	let rs = $derived(field.horizon ?? 0);
+	let rings = $derived(landmarkRings(view, field, scene.body));
+	let isochrones = $derived(isochroneRings(view, field));
+	let paths = $derived(companionPaths(view, scene.body));
+	let companions = $derived(
+		companionsNow(scene.body, epochSeconds(scene.departedAt) + scene.t, paths)
+	);
 
 	function observe(node: HTMLElement) {
 		const ro = new ResizeObserver(([e]) => {
@@ -127,9 +136,19 @@
 		role="img"
 		aria-label="{scene.body.name} with your course and your ship"
 	>
-		<Rings {view} {field} body={scene.body} />
-		<Companions {view} {scene} ship={shownShip} />
+		<Rings {view} {rings} {isochrones} surface={field.surface} />
+		<Companions {view} {companions} />
 		<Course {view} {scene} ship={shownShip} />
+		<Captions
+			{view}
+			{scene}
+			{field}
+			body={scene.body}
+			{rings}
+			{isochrones}
+			{companions}
+			ship={shownShip}
+		/>
 	</svg>
 
 	<ScaleBar {mpp} />

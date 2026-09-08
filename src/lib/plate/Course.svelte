@@ -65,7 +65,6 @@
 	<circle r="4" class="ship" />
 	<line x1="4" x2="16" class="ship-line" />
 </g>
-<text x={sx(view, ship.x) + 10} y={sy(view, ship.y) + 14} class="tag accent">You</text>
 
 <style>
 	.course {

@@ -231,7 +231,7 @@
 	}
 	.manoeuvres li {
 		display: grid;
-		grid-template-columns: 7ch minmax(0, 1fr);
+		grid-template-columns: minmax(7ch, max-content) minmax(0, 1fr);
 		align-items: baseline;
 		gap: 8px;
 		padding: 6px 0;

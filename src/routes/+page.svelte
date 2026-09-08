@@ -8,16 +8,14 @@
 	import { Scene } from '$lib/sim/scene.svelte';
 	import { Ticker } from '$lib/sim/ticker';
 	import { encodeScene } from '$lib/sim/url';
-	import { tourById } from '$lib/tours';
 	import FlightPanel from '$lib/ui/FlightPanel.svelte';
 	import BodyPicker from '$lib/ui/BodyPicker.svelte';
 	import Instruments from '$lib/ui/Instruments.svelte';
-	import TourBar from '$lib/ui/TourBar.svelte';
 
 	let { data } = $props();
 	const scene = new Scene(untrack(() => data.snapshot));
-	scene.tour = untrack(() => data.tourId);
-	let tour = $derived(scene.tour ? tourById(scene.tour) : null);
+	scene.tour = untrack(() => data.tour?.id ?? null);
+	let tour = $derived(scene.tour && data.tour?.id === scene.tour ? data.tour : null);
 
 	const description =
 		'Fly past the Sun, a neutron star, or a black hole and watch your clock drift from the one on Earth.';
@@ -125,7 +123,8 @@
 	<section class="view">
 		<Plate {scene} />
 	</section>
-	{#if tour}
+	{#if tour && data.TourBar}
+		{@const TourBar = data.TourBar}
 		<div class="note">
 			<TourBar {scene} {tour} onleave={() => (scene.tour = null)} />
 		</div>

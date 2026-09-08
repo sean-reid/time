@@ -22,7 +22,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:unit
+      - run: pnpm test:coverage
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          retention-days: 7
       - run: pnpm build
       - run: pnpm size
 

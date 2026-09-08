@@ -3,7 +3,17 @@ import type { Body } from './types';
 
 export { bodies } from './bodies';
 export type { BodyId } from './bodies';
-export type { Body, BodyKind, Companion, Orbit, Quantity, Source } from './types';
+export type {
+	Body,
+	BodyCitations,
+	BodyKind,
+	Citation,
+	Companion,
+	CompanionCitations,
+	Orbit,
+	Quantity,
+	Source
+} from './types';
 
 export function findBody(id: string): Body | undefined {
 	return bodies.find((b) => b.id === id);

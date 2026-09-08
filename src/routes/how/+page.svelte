@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+
+	let { data } = $props();
 </script>
 
 <svelte:head>
@@ -227,6 +229,16 @@
 				>Ashby 2003, Relativity in the Global Positioning System</a
 			>, Living Reviews in Relativity.
 		</li>
+	</ul>
+
+	<h2 class="label">Catalogue</h2>
+	<p>
+		Every mass, radius, spin, distance and orbital element in the body picker cites one of these.
+	</p>
+	<ul>
+		{#each data.catalogue as source (source.url)}
+			<li><a href={source.url}>{source.label}</a></li>
+		{/each}
 	</ul>
 </main>
 

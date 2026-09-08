@@ -6,6 +6,10 @@ export interface Source {
 export interface Quantity {
 	value: number;
 	unit: 'kg' | 'm' | 's' | '1';
+}
+
+/** Where a quantity comes from and any caveat on its value. */
+export interface Citation {
 	source: Source;
 	note?: string;
 }
@@ -50,4 +54,20 @@ export interface Body {
 	summary: string;
 	orbits?: readonly Orbit[];
 	companions?: readonly Companion[];
+}
+
+export type CompanionCitations = Record<
+	'semiMajorAxis' | 'eccentricity' | 'period' | 'argumentOfPeriapsis' | 'meanAnomalyAtEpoch',
+	Citation
+>;
+
+/** One citation per quantity of a Body under the same keys; orbits by orbit id, companions by body id. */
+export interface BodyCitations {
+	mass: Citation;
+	radius?: Citation;
+	spin?: Citation;
+	rotationPeriod?: Citation;
+	distanceFromEarth?: Citation;
+	orbits?: Readonly<Record<string, Citation>>;
+	companions?: Readonly<Record<string, CompanionCitations>>;
 }

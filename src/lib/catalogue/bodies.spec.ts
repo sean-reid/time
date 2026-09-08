@@ -1,19 +1,47 @@
 import { describe, expect, it } from 'vitest';
 import { bodies, bodyById } from './index';
-import type { Body, Companion, Quantity } from './types';
+import { catalogueSources, citations } from './sources';
+import type { Body, BodyCitations, Citation, Companion, Quantity } from './types';
 
 const G = 6.6743e-11;
 const c = 299792458;
 
+const OWN = ['mass', 'radius', 'spin', 'rotationPeriod', 'distanceFromEarth'] as const;
+const ELEMENTS = [
+	'semiMajorAxis',
+	'eccentricity',
+	'period',
+	'argumentOfPeriapsis',
+	'meanAnomalyAtEpoch'
+] as const;
+
 function quantities(body: Body): Quantity[] {
-	const own = [
-		body.mass,
-		body.radius,
-		body.spin,
-		body.rotationPeriod,
-		body.distanceFromEarth
-	].filter((q): q is Quantity => q !== undefined);
+	const own = OWN.map((k) => body[k]).filter((q): q is Quantity => q !== undefined);
 	return own.concat((body.orbits ?? []).map((o) => o.radius));
+}
+
+/** Every quantity of a body paired with its citation, undefined where one is missing. */
+function cited(body: Body): [string, Quantity | undefined, Citation | undefined][] {
+	const c: BodyCitations = citations[body.id as keyof typeof citations];
+	const rows: [string, Quantity | undefined, Citation | undefined][] = OWN.map((k) => [
+		k,
+		body[k],
+		c[k]
+	]);
+	for (const o of body.orbits ?? []) rows.push([`orbits.${o.id}`, o.radius, c.orbits?.[o.id]]);
+	for (const id of Object.keys(c.orbits ?? {})) {
+		if (!body.orbits?.some((o) => o.id === id))
+			rows.push([`orbits.${id}`, undefined, c.orbits![id]]);
+	}
+	for (const p of body.companions ?? []) {
+		for (const k of ELEMENTS)
+			rows.push([`companions.${p.body}.${k}`, p[k], c.companions?.[p.body]?.[k]]);
+	}
+	for (const id of Object.keys(c.companions ?? {})) {
+		if (!body.companions?.some((p) => p.body === id))
+			rows.push([`companions.${id}`, undefined, c.companions![id].period]);
+	}
+	return rows;
 }
 
 const all: readonly Body[] = bodies;
@@ -47,15 +75,36 @@ describe('catalogue', () => {
 		}
 	});
 
-	it('cites a labelled http(s) source on every quantity', () => {
+	it('has a positive finite value for every quantity', () => {
 		for (const body of all) {
 			for (const q of quantities(body)) {
 				expect(Number.isFinite(q.value)).toBe(true);
 				expect(q.value).toBeGreaterThan(0);
-				expect(q.source.label.trim()).not.toBe('');
-				expect(q.source.url).toMatch(/^https?:\/\/\S+$/);
 			}
 		}
+	});
+
+	it('cites a labelled http(s) source on every quantity, and nothing else', () => {
+		expect(Object.keys(citations).sort()).toEqual(all.map((b) => b.id).sort());
+		for (const body of all) {
+			for (const [path, q, c] of cited(body)) {
+				expect(c === undefined, `${body.id}.${path}`).toBe(q === undefined);
+				if (!c) continue;
+				expect(c.source.label.trim()).not.toBe('');
+				expect(c.source.url).toMatch(/^https?:\/\/\S+$/);
+			}
+		}
+	});
+
+	it('lists each cited source once, keeping its label', () => {
+		const sources = catalogueSources();
+		const urls = sources.map((s) => s.url);
+		expect(new Set(urls).size).toBe(urls.length);
+		expect(urls.length).toBeGreaterThan(20);
+		expect(sources[0]).toEqual({
+			label: 'Prsa et al. 2016, IAU 2015 Resolution B3 nominal values',
+			url: 'https://arxiv.org/abs/1605.09788'
+		});
 	});
 
 	it('gives black holes a spin in [0, 1) and no radius', () => {
@@ -139,14 +188,10 @@ describe('catalogue', () => {
 		}
 	});
 
-	it('cites a labelled http(s) source on every companion element, in SI', () => {
+	it('gives every companion element a finite value in SI', () => {
 		for (const body of withCompanions) {
 			for (const c of body.companions ?? []) {
-				for (const q of companionQuantities(c)) {
-					expect(Number.isFinite(q.value)).toBe(true);
-					expect(q.source.label.trim()).not.toBe('');
-					expect(q.source.url).toMatch(/^https?:\/\/\S+$/);
-				}
+				for (const q of companionQuantities(c)) expect(Number.isFinite(q.value)).toBe(true);
 				expect(c.semiMajorAxis.unit).toBe('m');
 				expect(c.period.unit).toBe('s');
 				expect(c.eccentricity.unit).toBe('1');
@@ -163,10 +208,11 @@ describe('catalogue', () => {
 				expect(c.period.value).toBeGreaterThan(0);
 				expect(c.eccentricity.value).toBeGreaterThanOrEqual(0);
 				expect(c.eccentricity.value).toBeLessThan(1);
-				for (const angle of [c.argumentOfPeriapsis, c.meanAnomalyAtEpoch]) {
-					expect(angle.value).toBeGreaterThanOrEqual(0);
-					expect(angle.value).toBeLessThan(2 * Math.PI);
-					if (angle.value === 0) expect(angle.note).toBeDefined();
+				const cited = citations[body.id as keyof typeof citations].companions![c.body];
+				for (const k of ['argumentOfPeriapsis', 'meanAnomalyAtEpoch'] as const) {
+					expect(c[k].value).toBeGreaterThanOrEqual(0);
+					expect(c[k].value).toBeLessThan(2 * Math.PI);
+					if (c[k].value === 0) expect(cited[k].note).toBeDefined();
 				}
 			}
 		}

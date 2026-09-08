@@ -53,6 +53,21 @@ describe('trail', () => {
 		expect(trail.extend(thinned, 'k', project)).toBe('M0.0 0.0L10.0 0.0L20.0 0.0L25.0 0.0');
 	});
 
+	it('joins thinned samples along the orbit instead of across it', () => {
+		const pts: FlightSample[] = [];
+		for (let i = 0; i <= 8; i++) {
+			const a = (i / 4) * Math.PI;
+			pts.push(sample(i, 300 * Math.cos(a), 300 * Math.sin(a)));
+			pts[i].phi = a;
+		}
+		const d = new Trail().extend(pts, 'k', project);
+		const radii = [...d.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map((m) =>
+			Math.hypot(Number(m[1]), Number(m[2]))
+		);
+		expect(radii.length).toBeGreaterThan(50);
+		for (const r of radii) expect(r).toBeCloseTo(300, 0);
+	});
+
 	it('draws only the flown part and starts over when the present moves back', () => {
 		const pts = [0, 10, 20, 30, 40].map((x) => sample(x, x, 0));
 		expect(flownCount(pts, 25)).toBe(3);

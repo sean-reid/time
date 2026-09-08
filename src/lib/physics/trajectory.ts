@@ -121,6 +121,17 @@ export class Trajectory {
 		return this.samples[this.samples.length - 1];
 	}
 
+	/** Apply a manoeuvre to the live flight when its time is within the last step; false means replay. */
+	applyNow(m: Manoeuvre): boolean {
+		const prev = this.samples[this.samples.length - 2] ?? this.samples[0];
+		if (this.ending || m.at < prev.t || m.at > this.last.t + 1e-9) return false;
+		this.queue = [];
+		if (m.kind === 'kick') this.stepper.kick(m.dv, m.heading);
+		else this.stepper.hold(m.duration);
+		this.push(this.stepper.sample(), true);
+		return true;
+	}
+
 	/** Integrate until coordinate time tMax or the flight ends; bounded work per call. */
 	ensure(tMax: number): void {
 		let steps = 0;

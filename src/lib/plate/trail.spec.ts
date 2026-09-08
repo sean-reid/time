@@ -39,6 +39,20 @@ describe('trail', () => {
 		expect(trail.extend(pts, 'k', project)).toBe('M0.0 0.0L5.0 0.0L10.0 0.0L20.0 0.0');
 	});
 
+	it('starts over when the samples are replaced by a thinned array', () => {
+		const trail = new Trail();
+		const pts = [
+			sample(0, 0, 0),
+			sample(1, 5, 0),
+			sample(2, 10, 0),
+			sample(3, 15, 0),
+			sample(4, 20, 0)
+		];
+		expect(trail.extend(pts, 'k', project)).toBe('M0.0 0.0L5.0 0.0L10.0 0.0L15.0 0.0');
+		const thinned = [pts[0], pts[2], pts[4], sample(5, 25, 0), sample(6, 30, 0)];
+		expect(trail.extend(thinned, 'k', project)).toBe('M0.0 0.0L10.0 0.0L20.0 0.0L25.0 0.0');
+	});
+
 	it('starts over when the zoom key or the sample array changes', () => {
 		const trail = new Trail();
 		const pts = [sample(0, 0, 0), sample(1, 5, 0), sample(2, 10, 0)];

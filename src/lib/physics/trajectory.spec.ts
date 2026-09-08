@@ -194,3 +194,35 @@ describe('trajectory, manoeuvre timing and limits', () => {
 		expect(inward.last.r).toBeLessThan(6 * holeField.isco(1));
 	});
 });
+
+describe('trajectory, manoeuvres on the live flight', () => {
+	it('a kick applied at the present matches the same kick planned from the start', () => {
+		const start = { r: gps, phi: 0, kind: 'orbit' as const, direction: 1 as const };
+		const planned = new Trajectory(earth, {
+			start,
+			manoeuvres: [{ at: 1000, kind: 'kick', dv: 500, heading: 'prograde' }]
+		});
+		planned.ensure(5000);
+		const live = new Trajectory(earth, { start, manoeuvres: [] });
+		live.ensure(1000);
+		const kept = live.samples.length;
+		expect(live.applyNow({ at: 1000, kind: 'kick', dv: 500, heading: 'prograde' })).toBe(true);
+		live.ensure(5000);
+		expect(live.samples.length).toBeGreaterThan(kept);
+		expect(live.samples[0].t).toBe(0);
+		const a = planned.stateAt(5000);
+		const b = live.stateAt(5000);
+		expect(b.r).toBeCloseTo(a.r, -1);
+		expect(b.phi).toBeCloseTo(a.phi, 6);
+	});
+
+	it('refuses a manoeuvre placed before the kept path', () => {
+		const traj = new Trajectory(earth, {
+			start: { r: gps, phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: []
+		});
+		traj.ensure(2000);
+		expect(traj.applyNow({ at: 500, kind: 'hold', duration: Infinity })).toBe(false);
+		expect(traj.last.holding).toBe(false);
+	});
+});

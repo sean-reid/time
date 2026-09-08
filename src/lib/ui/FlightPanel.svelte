@@ -74,7 +74,10 @@
 		if (m.dv === 0) return 'let go';
 		return `${formatSpeed(m.dv)} ${m.heading}`;
 	}
-	let scrubMax = $derived(Math.max(60, scene.trajectory.last.t * 1.25));
+	let scrubMax = $derived.by(() => {
+		void scene.samplesVersion;
+		return Math.max(60, scene.trajectory.last.t * 1.25);
+	});
 </script>
 
 <section class="flight" aria-labelledby="flight-heading">

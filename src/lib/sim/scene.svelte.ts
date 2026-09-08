@@ -25,6 +25,8 @@ export type Phase = 'orbiting' | 'coasting' | 'holding' | 'landed' | 'horizon';
 /** Roughly how many integrator steps one frame can afford, and how many an orbit takes. */
 const STEPS_PER_FRAME = 20_000;
 const STEPS_PER_ORBIT = 320;
+/** Bounded ensure calls a replay may spend catching up to the present before the clock yields. */
+const CATCH_UP_CALLS = 8;
 
 /** Keep a start where an orbit or a hold can exist. */
 function sanitiseStart(start: Start, field: Field): Start {
@@ -53,17 +55,12 @@ export class Scene {
 	/** Id of the guided tour this scene came from, cleared by any edit. */
 	tour = $state<string | null>(null);
 	sound = $state(false);
-	/** Bumped when the trajectory must be rebuilt from the start. */
-	private generation = $state(0);
 	/** Bumped when the flight gains samples, so drawings of the path know to refresh. */
 	samplesVersion = $state(0);
+	trajectory = $state.raw<Trajectory>() as Trajectory;
 
 	field = $derived(fieldFor(this.body));
 	space = $derived<Space>(spaceFor(this.body, this.departedAt));
-	trajectory = $derived.by(() => {
-		void this.generation;
-		return new Trajectory(this.space, this.plan);
-	});
 	earthDeficit = $derived(earthReferenceDeficit());
 	/** The Sun's share of this scene's deficit, so every scene is measured against the same time. */
 	solar = $derived(solarDeficit(this.body));
@@ -87,6 +84,7 @@ export class Scene {
 			this.plan = defaultPlan(this.body, this.field);
 			this.camera = defaultCamera(this.plan);
 		}
+		this.rebuild();
 	}
 
 	setBody(id: string) {
@@ -124,10 +122,16 @@ export class Scene {
 		this.addManoeuvre({ at: this.t, kind: 'kick', dv: 0, heading: 'prograde' });
 	}
 
+	/** Kicks land on the running flight; only a manoeuvre placed in the past replays it. */
 	private addManoeuvre(m: Plan['manoeuvres'][number]) {
 		const kept = this.plan.manoeuvres.filter((x) => x.at <= m.at);
 		this.plan = { ...this.plan, manoeuvres: [...kept, m] };
-		this.rebuild();
+		if (this.trajectory.applyNow(m)) {
+			this.t = this.trajectory.last.t;
+			this.samplesVersion += 1;
+		} else {
+			this.rebuild();
+		}
 	}
 
 	removeManoeuvre(index: number) {
@@ -149,15 +153,22 @@ export class Scene {
 		this.rebuild();
 	}
 
+	/** Replay the flight from the start and bring it back to the present within a bounded effort. */
 	private rebuild() {
-		this.generation += 1;
+		const traj = new Trajectory(this.space, this.plan);
+		for (let i = 0; i < CATCH_UP_CALLS && !traj.ending && traj.last.t < this.t; i++) {
+			traj.ensure(this.t);
+		}
+		if (!traj.ending && traj.last.t < this.t) this.t = traj.last.t;
+		this.trajectory = traj;
+		this.samplesVersion += 1;
 	}
 
-	/** Move the clock; scrubbing backwards rebuilds the flight from the start. */
+	/** Move the clock; scrubbing before the kept path replays the flight. */
 	seek(t: number) {
-		if (t < this.trajectory.samples[0].t) this.rebuild();
 		this.t = Math.max(0, t);
-		this.samplesVersion += 1;
+		if (this.t < this.trajectory.samples[0].t) this.rebuild();
+		else this.samplesVersion += 1;
 	}
 
 	advance(realSeconds: number) {

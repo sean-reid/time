@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.2.0](https://github.com/sean-reid/time/compare/time-v0.1.0...time-v0.2.0) (2026-09-08)
+
+
+### Features
+
+* **sim:** say when the ship leaves the body's sphere of influence ([#53](https://github.com/sean-reid/time/issues/53)) ([1080980](https://github.com/sean-reid/time/commit/10809804812bd62743ff5b121bf271aa5642d6bd))
+
+
+### Bug Fixes
+
+* **physics:** thin old samples instead of dropping the start of the trail ([#62](https://github.com/sean-reid/time/issues/62)) ([626ae96](https://github.com/sean-reid/time/commit/626ae963e0d33377f8c62e1535535a3b20701d46))
+* **plate:** draw the trail only up to the present ([#65](https://github.com/sean-reid/time/issues/65)) ([5752a82](https://github.com/sean-reid/time/commit/5752a825a4e2fc26cd5861637572ddb9f7968b57))
+* **plate:** keep captions off each other and off the path ([#52](https://github.com/sean-reid/time/issues/52)) ([76c884a](https://github.com/sean-reid/time/commit/76c884a7ed081cdf21032d57c2b7c917135ef879))
+* **sim:** honest warp cap per regime and a bounded frame gap ([#64](https://github.com/sean-reid/time/issues/64)) ([d4a7be4](https://github.com/sean-reid/time/commit/d4a7be44ab65d5e14048d9239e936e1b76329ab0))
+* **sim:** refresh the ship readout when a manoeuvre lands while paused ([#56](https://github.com/sean-reid/time/issues/56)) ([e92ba01](https://github.com/sean-reid/time/commit/e92ba01cdc430fe54a191c9c79c5d4f5c9e81b42))
+* **sim:** show the warp the integrator really achieves and cap by the current orbit ([#44](https://github.com/sean-reid/time/issues/44)) ([f9d02ef](https://github.com/sean-reid/time/commit/f9d02ef57109edb560d3f8e1453322c9d264f052))
+* **ui:** make the kick log read only ([#40](https://github.com/sean-reid/time/issues/40)) ([0658f50](https://github.com/sean-reid/time/commit/0658f503e3128bd85f4dfc372b324f1ef5602864))
+* **ui:** small follow-ups from the visual snapshots ([#63](https://github.com/sean-reid/time/issues/63)) ([886d271](https://github.com/sean-reid/time/commit/886d27196492ff224d96c4b7ca518ef4c86aafbb))
+* **ui:** valid dl markup for the readouts ([#48](https://github.com/sean-reid/time/issues/48)) ([ae632b7](https://github.com/sean-reid/time/commit/ae632b73239c4240909dc48c5be23ea3c950d415))
+
+
+### Performance
+
+* cache the font immutably ([#47](https://github.com/sean-reid/time/issues/47)) ([12c84f2](https://github.com/sean-reid/time/commit/12c84f2502f1ba828483a1b39a046451081008ca))
+* **catalogue:** keep notes and sources out of the client bundle ([#43](https://github.com/sean-reid/time/issues/43)) ([85d01ea](https://github.com/sean-reid/time/commit/85d01ea69220b9364c26199e4f01e98ed94c9b1b))
+* **tours:** load tours only when one is requested ([#46](https://github.com/sean-reid/time/issues/46)) ([997d8ae](https://github.com/sean-reid/time/commit/997d8ae8cfcbfb51510aeca86af184d16772e28f))
+
 ## 0.1.0 (2026-09-08)
 
 ### Features

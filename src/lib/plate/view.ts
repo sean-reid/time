@@ -1,3 +1,4 @@
+import type { Box } from './captions';
 import type { Point } from './trail';
 
 /** Plate size in CSS pixels, metres per pixel, and the world point at its centre. */
@@ -28,4 +29,12 @@ export function px(v: View, metres: number): number {
 export function visibleRing(v: View, r: number): boolean {
 	const p = px(v, r);
 	return p > 6 && p < 40_000;
+}
+
+/** Where the scale bar sits in plate pixels: top right on narrow layouts, bottom right otherwise. */
+export function scaleBarBox(view: View, narrow: boolean): Box {
+	const bar = 10 ** Math.floor(Math.log10(view.mpp * 160)) / view.mpp;
+	const w = Math.max(bar, 130);
+	const h = 44;
+	return { x: view.w - 20 - w, y: narrow ? 44 : view.h - 16 - h, w, h };
 }

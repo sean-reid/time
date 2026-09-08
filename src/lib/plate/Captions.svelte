@@ -13,7 +13,7 @@
 	} from './captions';
 	import type { CompanionNow, Isochrone, Ring } from './landmarks';
 	import type { Point } from './trail';
-	import { polarXY, px, sx, sy, visibleRing, type View } from './view';
+	import { polarXY, px, scaleBarBox, sx, sy, visibleRing, type View } from './view';
 
 	let {
 		view,
@@ -23,7 +23,8 @@
 		rings,
 		isochrones,
 		companions,
-		ship
+		ship,
+		narrow
 	}: {
 		view: View;
 		scene: Scene;
@@ -33,6 +34,7 @@
 		isochrones: Isochrone[];
 		companions: CompanionNow[];
 		ship: Point;
+		narrow: boolean;
 	} = $props();
 
 	const BESIDE: Direction[] = ['E', 'W', 'NE', 'SE', 'NW', 'SW', 'N', 'S'];
@@ -101,6 +103,7 @@
 	let placed = $derived(
 		placeCaptions(requests, {
 			frame: { x: 0, y: 0, w: view.w, h: view.h },
+			reserved: [scaleBarBox(view, narrow)],
 			solids: [{ ...origin, r: surfacePx }, { ...shipPx, r: 4 }, ...shown],
 			lines: [...rings, ...isochrones].map((x) => ({ ...origin, r: px(view, x.r) })),
 			path

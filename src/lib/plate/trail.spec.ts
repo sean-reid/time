@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FlightSample } from '$lib/physics';
-import { Trail } from './trail';
+import { flownCount, Trail } from './trail';
 
 function sample(t: number, x: number, y: number): FlightSample {
 	return {
@@ -51,6 +51,17 @@ describe('trail', () => {
 		expect(trail.extend(pts, 'k', project)).toBe('M0.0 0.0L5.0 0.0L10.0 0.0L15.0 0.0');
 		const thinned = [pts[0], pts[2], pts[4], sample(5, 25, 0), sample(6, 30, 0)];
 		expect(trail.extend(thinned, 'k', project)).toBe('M0.0 0.0L10.0 0.0L20.0 0.0L25.0 0.0');
+	});
+
+	it('draws only the flown part and starts over when the present moves back', () => {
+		const pts = [0, 10, 20, 30, 40].map((x) => sample(x, x, 0));
+		expect(flownCount(pts, 25)).toBe(3);
+		expect(flownCount(pts, 40)).toBe(5);
+		expect(flownCount(pts, -1)).toBe(0);
+		const trail = new Trail();
+		expect(trail.extend(pts, 'k', project, 1, 3)).toBe('M0.0 0.0L10.0 0.0');
+		expect(trail.extend(pts, 'k', project, 1, 5)).toBe('M0.0 0.0L10.0 0.0L20.0 0.0L30.0 0.0');
+		expect(trail.extend(pts, 'k', project, 1, 2)).toBe('M0.0 0.0');
 	});
 
 	it('starts over when the zoom key or the sample array changes', () => {

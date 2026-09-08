@@ -8,7 +8,8 @@ export interface Point {
 /**
  * Builds the flown path as SVG path data, extending it by only the samples added since the last
  * call and keeping a point whenever it moves at least `tolerance` pixels from the last kept one.
- * The result excludes the newest sample, which the integrator still rewrites in place.
+ * Only the first `count` samples take part, and the result excludes the last of those, which the
+ * integrator may still rewrite in place.
  */
 export class Trail {
 	private key = '';
@@ -23,13 +24,14 @@ export class Trail {
 		samples: FlightSample[],
 		key: string,
 		project: (s: FlightSample) => Point,
-		tolerance = 1
+		tolerance = 1,
+		count = samples.length
 	): string {
 		const stale =
 			key !== this.key ||
 			samples !== this.samples ||
 			samples[0] !== this.first ||
-			samples.length - 1 < this.count;
+			count - 1 < this.count;
 		if (stale) {
 			this.key = key;
 			this.samples = samples;
@@ -39,7 +41,7 @@ export class Trail {
 			this.lx = NaN;
 			this.ly = NaN;
 		}
-		const upto = samples.length - 1;
+		const upto = Math.min(count, samples.length) - 1;
 		for (let i = this.count; i < upto; i++) {
 			const p = project(samples[i]);
 			if (this.d === '') {
@@ -55,4 +57,16 @@ export class Trail {
 		this.count = Math.max(upto, 0);
 		return this.d;
 	}
+}
+
+/** How many samples lie at or before time t, given samples sorted by time. */
+export function flownCount(samples: FlightSample[], t: number): number {
+	let lo = 0;
+	let hi = samples.length;
+	while (lo < hi) {
+		const mid = (lo + hi) >> 1;
+		if (samples[mid].t <= t) lo = mid + 1;
+		else hi = mid;
+	}
+	return lo;
 }

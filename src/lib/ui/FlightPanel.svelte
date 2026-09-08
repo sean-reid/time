@@ -114,7 +114,7 @@
 	</div>
 
 	<div class="kick">
-		<span class="label">Kick by {formatSpeed(dv)}</span>
+		<span class="label">Kick by <span class="unit">{formatSpeed(dv)}</span></span>
 		<div class="row">
 			{#each FRACTIONS as f (f)}
 				<button type="button" onclick={() => (fraction = f)} aria-pressed={fraction === f}>
@@ -163,7 +163,9 @@
 	{/if}
 
 	<label class="timeline">
-		<span class="label">Elapsed on Earth: {formatDuration(scene.earthElapsed)}</span>
+		<span class="label"
+			>Elapsed on Earth: <span class="unit">{formatDuration(scene.earthElapsed)}</span></span
+		>
 		<input
 			type="range"
 			min="0"
@@ -242,7 +244,11 @@
 	}
 	.remove {
 		border: 0;
-		min-height: 40px;
+		min-height: 44px;
+	}
+	.unit {
+		text-transform: none;
+		letter-spacing: 0;
 	}
 	button[aria-pressed='true'] {
 		background: var(--ink);

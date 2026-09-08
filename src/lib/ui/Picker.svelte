@@ -90,9 +90,12 @@
 		type="button"
 		class="current"
 		class:compact
+		role="combobox"
+		aria-label={label}
 		aria-haspopup="listbox"
 		aria-expanded={open}
 		aria-controls={listId}
+		aria-activedescendant={open ? `${listId}-${active}` : undefined}
 		onclick={() => (open ? (open = false) : show())}
 		onkeydown={onKey}
 	>
@@ -114,6 +117,7 @@
 						{#each g.items as item (item.id)}
 							{@const i = flat.indexOf(item)}
 							<li
+								id="{listId}-{i}"
 								role="option"
 								aria-selected={item.id === value}
 								class:active={i === active}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { Scene } from '$lib/sim/scene.svelte';
 	import { currentStop, nextStopTime, type Tour } from '$lib/tours';
 
@@ -7,6 +8,12 @@
 	let index = $derived(currentStop(tour, scene));
 	let stop = $derived(tour.stops[index]);
 	let last = $derived(index === tour.stops.length - 1);
+	/** Read once when the stop changes, not every frame the numbers move. */
+	let announced = $state('');
+	$effect(() => {
+		const i = index;
+		announced = untrack(() => `${tour.title}, stop ${i + 1}. ${tour.stops[i].text(scene)}`);
+	});
 
 	$effect(() => {
 		const frame = stop.frame;
@@ -24,7 +31,8 @@
 	}
 </script>
 
-<div class="tour" aria-live="polite">
+<div class="tour">
+	<p class="visually-hidden" aria-live="polite">{announced}</p>
 	<p class="label">{tour.title}, stop {index + 1} of {tour.stops.length}</p>
 	<p class="text">{stop.text(scene)}</p>
 	<div class="row">

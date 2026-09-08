@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import { formatDrift, formatRelativeRate } from '$lib/format';
+	import { formatDrift, formatRelativeRate, formatThrust } from '$lib/format';
 	import Plate from '$lib/plate/Plate.svelte';
 	import { Scene } from '$lib/sim/scene.svelte';
 	import { Ticker } from '$lib/sim/ticker';
@@ -28,9 +28,12 @@
 	});
 
 	let note = $derived.by(() => {
-		const rate = formatRelativeRate(scene.ship.deficit, scene.earthDeficit);
+		const rate = formatRelativeRate(scene.shipDeficit, scene.earthDeficit);
 		if (scene.ship.phase === 'horizon') {
 			return 'You crossed the horizon. Nothing holds station inside, and Earth’s clock runs on without you.';
+		}
+		if (scene.ship.phase === 'landed') {
+			return `You are standing on ${scene.body.name}. Standing here takes ${formatThrust(scene.ship.thrust)}, and ${rate}.`;
 		}
 		if (rate.includes('per day'))
 			return `Your clock is running ${rate}. Fly closer to something heavy.`;
@@ -43,7 +46,7 @@
 	/** Spoken summary for screen readers, refreshed every half minute rather than every frame. */
 	let announcement = $state('');
 	function announce() {
-		const rate = formatRelativeRate(scene.ship.deficit, scene.earthDeficit);
+		const rate = formatRelativeRate(scene.shipDeficit, scene.earthDeficit);
 		announcement = `Near ${scene.body.name}. Drift ${formatDrift(scene.drift)}. Your clock: ${rate}.`;
 	}
 
@@ -58,8 +61,8 @@
 			if (ticker.running) {
 				const w = scene.playing ? scene.warp : 0;
 				ticker.update(
-					scene.ship.tau,
-					w * (1 - scene.ship.deficit),
+					scene.shipTau,
+					w * (1 - scene.shipDeficit),
 					scene.earthElapsed,
 					w * (1 - scene.earthDeficit)
 				);
@@ -75,7 +78,7 @@
 	});
 
 	$effect(() => {
-		if (scene.sound && !ticker.running) ticker.start(scene.ship.tau, scene.earthElapsed);
+		if (scene.sound && !ticker.running) ticker.start(scene.shipTau, scene.earthElapsed);
 		if (!scene.sound && ticker.running) ticker.stop();
 	});
 
@@ -109,7 +112,7 @@
 
 <main class="app">
 	<header class="bar">
-		<a href={resolve('/')} class="wordmark">time</a>
+		<h1 class="wordmark"><a href={resolve('/')}>time</a></h1>
 		<div class="pick">
 			<BodyPicker value={scene.body} onchange={(id) => scene.setBody(id)} />
 		</div>
@@ -156,6 +159,7 @@
 		padding: 18px 20px 12px;
 	}
 	.wordmark {
+		margin: 0;
 		font-weight: 600;
 		font-size: 17px;
 		letter-spacing: -0.01em;
@@ -166,6 +170,10 @@
 		font-size: 13px;
 		color: var(--ink-soft);
 		justify-self: end;
+	}
+	nav a {
+		display: inline-block;
+		padding: 12px 0;
 	}
 	nav a:hover {
 		color: var(--ink);
@@ -207,8 +215,10 @@
 
 	@media (max-width: 899px) {
 		.app {
+			height: auto;
+			min-height: 100dvh;
 			grid-template-columns: 1fr;
-			grid-template-rows: auto 1fr auto auto;
+			grid-template-rows: auto 46dvh auto auto;
 			grid-template-areas:
 				'bar'
 				'view'
@@ -220,15 +230,12 @@
 			gap: 8px 16px;
 		}
 		.pick {
-			grid-template-columns: auto 1fr;
-			align-items: center;
-			gap: 8px;
+			grid-template-columns: 1fr;
 		}
 		.view {
 			border-left: 0;
 			border-top: var(--hair) solid var(--rule);
 			border-bottom: var(--hair) solid var(--rule);
-			min-height: 46dvh;
 		}
 		.note {
 			grid-area: note;
@@ -239,6 +246,7 @@
 		.strip {
 			padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
 			gap: 16px;
+			overflow: visible;
 		}
 	}
 </style>

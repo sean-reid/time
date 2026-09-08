@@ -43,22 +43,24 @@
 	</div>
 	<div>
 		<dt class="label">Your clock</dt>
-		<dd>{formatRelativeRate(scene.ship.deficit, scene.earthDeficit)}</dd>
+		<dd>{formatRelativeRate(scene.shipDeficit, scene.earthDeficit)}</dd>
 	</div>
 	<div class="pair">
 		<div>
 			<dt class="label">{scene.field.horizon !== null ? 'Above horizon' : 'Altitude'}</dt>
-			<dd>{altitude > 0 ? formatLength(altitude) : 'none'}</dd>
+			<dd>{altitude > 0 && scene.ship.phase !== 'horizon' ? formatLength(altitude) : 'none'}</dd>
 		</div>
 		<div>
 			<dt class="label">Speed</dt>
-			<dd>{formatSpeed(scene.ship.speed)}</dd>
+			<dd>{scene.ship.phase === 'horizon' ? 'none' : formatSpeed(scene.ship.speed)}</dd>
 		</div>
 	</div>
 	<div class="pair">
 		<div>
 			<dt class="label">Thrust to hold</dt>
-			<dd>{formatThrust(scene.ship.thrust)}</dd>
+			<dd>
+				{scene.ship.phase === 'horizon' ? 'nothing holds station' : formatThrust(scene.ship.thrust)}
+			</dd>
 		</div>
 		<div>
 			<dt class="label">Ship</dt>
@@ -77,14 +79,17 @@
 			disabled={scene.warp === 1}>−</button
 		>
 		<span>{formatWarp(scene.warp)}</span>
-		<button type="button" onclick={() => scene.stepWarp(1)} aria-label="Speed time up">+</button>
-	</div>
-	<div class="row three">
 		<button
 			type="button"
-			onclick={() => (scene.playing = !scene.playing)}
-			aria-pressed={!scene.playing}
+			onclick={() => scene.stepWarp(1)}
+			aria-label="Speed time up"
+			disabled={scene.warp >= scene.maxWarp}
 		>
+			+
+		</button>
+	</div>
+	<div class="row three">
+		<button type="button" onclick={() => (scene.playing = !scene.playing)}>
 			{scene.playing ? 'Pause' : 'Resume'}
 		</button>
 		<button type="button" onclick={() => scene.restart()}>Restart</button>
@@ -92,7 +97,7 @@
 			type="button"
 			onclick={() => (scene.sound = !scene.sound)}
 			aria-pressed={scene.sound}
-			title="Hear both clocks tick"
+			aria-label="Tick sound, hear both clocks"
 		>
 			Tick
 		</button>
@@ -137,7 +142,7 @@
 	}
 	.stepper button {
 		border: 0;
-		min-height: 42px;
+		min-height: 44px;
 	}
 	.stepper span {
 		text-align: center;

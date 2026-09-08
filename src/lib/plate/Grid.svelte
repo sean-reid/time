@@ -22,6 +22,9 @@
 		const s = g.createShader(type)!;
 		g.shaderSource(s, src);
 		g.compileShader(s);
+		if (import.meta.env.DEV && !g.getShaderParameter(s, g.COMPILE_STATUS)) {
+			console.error(g.getShaderInfoLog(s));
+		}
 		return s;
 	}
 
@@ -39,6 +42,7 @@
 			'uRes',
 			'uMpp',
 			'uCentreRes',
+			'uCentre',
 			'uRs',
 			'uSpacing',
 			'uSubFade',
@@ -48,6 +52,7 @@
 		]) {
 			uniforms[name] = g.getUniformLocation(program, name);
 		}
+		readInk();
 		const ro = new ResizeObserver(([entry]) => {
 			width = entry.contentRect.width;
 			height = entry.contentRect.height;
@@ -57,10 +62,11 @@
 		return { destroy: () => ro.disconnect() };
 	}
 
-	function inkRgb(): [number, number, number] {
+	let ink: [number, number, number] = [0.9, 0.88, 0.84];
+	function readInk() {
 		const hex = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
 		const n = parseInt(hex.slice(1), 16);
-		return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+		ink = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 	}
 
 	$effect(() => {
@@ -81,12 +87,13 @@
 		g.uniform2f(uniforms.uRes, w, h);
 		g.uniform1f(uniforms.uMpp, devMpp);
 		g.uniform2f(uniforms.uCentreRes, cx % (spacing * 10), cy % (spacing * 10));
+		g.uniform2f(uniforms.uCentre, cx, cy);
 		g.uniform1f(uniforms.uRs, rs);
 		g.uniform1f(uniforms.uSpacing, spacing);
 		g.uniform1f(uniforms.uSubFade, subFade);
 		g.uniform1f(uniforms.uCoarseOn, coarseOn);
 		g.uniform1f(uniforms.uInner, inner);
-		g.uniform3fv(uniforms.uInk, inkRgb());
+		g.uniform3fv(uniforms.uInk, ink);
 		g.clearColor(0, 0, 0, 0);
 		g.clear(g.COLOR_BUFFER_BIT);
 		g.drawArrays(g.TRIANGLES, 0, 3);

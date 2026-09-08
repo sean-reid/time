@@ -78,6 +78,60 @@ export function solarDeficit(body: Body): number {
 	return 0;
 }
 
+/** The most massive body that carries this one as a companion, with the orbit it rides. */
+export function parentOf(body: Body): { parent: Body; orbit: Companion } | null {
+	let best: { parent: Body; orbit: Companion } | null = null;
+	for (const parent of bodies as readonly Body[]) {
+		const orbit = parent.companions?.find((c) => c.body === body.id);
+		if (!orbit || parent.mass.value <= body.mass.value) continue;
+		if (!best || parent.mass.value > best.parent.mass.value) best = { parent, orbit };
+	}
+	return best;
+}
+
+function hill(body: Body, parent: Body, orbit: Companion): number {
+	const pericentre = orbit.semiMajorAxis.value * (1 - orbit.eccentricity.value);
+	return pericentre * Math.cbrt(body.mass.value / (3 * parent.mass.value));
+}
+
+/** Hill radius at the pericentre of the body's orbit around its parent, or null without one. */
+export function hillRadius(body: Body): number | null {
+	const rel = parentOf(body);
+	return rel ? hill(body, rel.parent, rel.orbit) : null;
+}
+
+export interface Influence {
+	/** The outermost body whose pull the scene models, and the Hill radius that bounds it. */
+	body: Body;
+	radius: number;
+	/** That body's orbit as a companion of the scene body, or null when it is the scene body. */
+	orbit: Companion | null;
+	/** The parent whose pull is missing beyond the radius. */
+	missing: Body;
+}
+
+/** Where a Newtonian scene stops being right: the Hill sphere of the last body it pulls with. */
+export function influenceFor(body: Body): Influence | null {
+	if (regimeFor(body) === 'geodesic') return null;
+	let current = body;
+	let orbit: Companion | null = null;
+	for (;;) {
+		const rel = parentOf(current);
+		if (!rel) return null;
+		const pulled = body.companions?.find((c) => c.body === rel.parent.id);
+		if (!pulled) {
+			return {
+				body: current,
+				radius: hill(current, rel.parent, rel.orbit),
+				orbit,
+				missing: rel.parent
+			};
+		}
+		current = rel.parent;
+		orbit = pulled;
+	}
+}
+
 export function spaceFor(body: Body, wallMs: number): Space {
 	return {
 		field: fieldFor(body),

@@ -2,6 +2,7 @@
 	import {
 		formatDrift,
 		formatDuration,
+		formatEffectiveWarp,
 		formatLength,
 		formatRelativeRate,
 		formatSpeed,
@@ -9,11 +10,16 @@
 		formatWarp
 	} from '$lib/format';
 	import type { Scene } from '$lib/sim/scene.svelte';
+	import { shortfall } from '$lib/sim/warp';
 	import Clock from './Clock.svelte';
 
 	let { scene }: { scene: Scene } = $props();
 
 	let altitude = $derived(scene.ship.r - scene.field.surface);
+	let warpText = $derived.by(() => {
+		const achieved = scene.playing ? shortfall(scene.warp, scene.effectiveWarp) : null;
+		return achieved === null ? formatWarp(scene.warp) : formatEffectiveWarp(scene.warp, achieved);
+	});
 	let status = $derived.by(() => {
 		const s = scene.ship;
 		switch (s.phase) {
@@ -78,7 +84,7 @@
 			aria-label="Slow time down"
 			disabled={scene.warp === 1}>−</button
 		>
-		<span>{formatWarp(scene.warp)}</span>
+		<span class="rate">{warpText}</span>
 		<button
 			type="button"
 			onclick={() => scene.stepWarp(1)}
@@ -144,7 +150,7 @@
 		border: 0;
 		min-height: 44px;
 	}
-	.stepper span {
+	.stepper .rate {
 		text-align: center;
 		font-size: 13px;
 		padding: 0 6px;

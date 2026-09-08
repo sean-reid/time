@@ -18,7 +18,8 @@
 		"test": "pnpm test:unit && pnpm test:e2e",
 		"test:e2e": "playwright test",
 		"test:unit:watch": "vitest",
-		"deploy:worker": "vite build && wrangler deploy"
+		"deploy:worker": "vite build && wrangler deploy",
+		"test:visual:update": "sh scripts/visual-snapshots.sh"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

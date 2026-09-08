@@ -7,6 +7,7 @@ import {
 	formatRatePerDay,
 	formatRelativeRate,
 	formatSpeed,
+	formatEffectiveWarp,
 	formatThrust,
 	formatWarp
 } from './format';
@@ -82,5 +83,9 @@ describe('formatThrust, formatSpeed, formatDuration, formatWarp', () => {
 	it('describes the time warp', () => {
 		expect(formatWarp(1)).toBe('1× real time');
 		expect(formatWarp(3600)).toBe('3\u2009600×, 1 s = 1 h');
+	});
+	it('says what warp the loop really reaches', () => {
+		expect(formatEffectiveWarp(600, 410)).toBe('600×, running at 410×');
+		expect(formatEffectiveWarp(31_557_600, 5.5e6)).toBe('3.2×10⁷×, running at 5.5×10⁶×');
 	});
 });

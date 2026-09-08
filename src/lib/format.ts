@@ -167,3 +167,8 @@ export function formatWarp(warp: number): string {
 	if (warp === 1) return '1× real time';
 	return `${formatMultiplier(warp)}×, 1 s = ${formatDuration(warp)}`;
 }
+
+/** The warp setting against the warp the frame loop really reaches: "600×, running at 410×". */
+export function formatEffectiveWarp(warp: number, achieved: number): string {
+	return `${formatMultiplier(warp)}×, running at ${formatMultiplier(achieved)}×`;
+}

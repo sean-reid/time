@@ -50,6 +50,9 @@
 			"esbuild",
 			"sharp",
 			"workerd"
-		]
+		],
+		"overrides": {
+			"@sveltejs/kit>cookie": "^0.7.2"
+		}
 	}
 }

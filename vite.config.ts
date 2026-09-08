@@ -18,6 +18,12 @@ export default defineConfig({
 	build: { rolldownOptions: { external: ['@resvg/resvg-wasm/index_bg.wasm'] } },
 	test: {
 		expect: { requireAssertions: true },
+		coverage: {
+			provider: 'v8',
+			include: ['src/**/*.{ts,svelte}'],
+			exclude: ['src/**/*.{test,spec}.ts', 'src/**/*.d.ts'],
+			reporter: ['text', 'lcov']
+		},
 		projects: [
 			{
 				extends: './vite.config.ts',

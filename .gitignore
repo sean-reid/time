@@ -24,5 +24,7 @@ vite.config.ts.timestamp-*
 # Playwright
 test-results
 playwright-report
+# Vitest
+coverage
 # Lighthouse
 .lighthouseci

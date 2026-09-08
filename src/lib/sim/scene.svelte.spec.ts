@@ -10,10 +10,11 @@ function fly(scene: Scene, seconds: number) {
 	scene.advance(seconds / scene.warp);
 }
 
-/** Fly far enough that the trajectory drops its oldest samples. */
-function flyPastKeptPath(scene: Scene) {
+/** Fly far enough that the trajectory hits its sample cap and thins the old path. */
+function flyPastSampleCap(scene: Scene) {
 	scene.warp = 604_800;
-	while (scene.trajectory.samples[0].t === 0) fly(scene, 1e6);
+	const before = scene.trajectory.samples;
+	while (scene.trajectory.samples === before) fly(scene, 1e6);
 }
 
 describe('Scene', () => {
@@ -135,20 +136,19 @@ describe('Scene', () => {
 		expect(scene.ship.phase).toBe('coasting');
 	});
 
-	it('seeking before the kept path replays and catches up to the sought time', () => {
+	it('seeking back into the thinned path keeps the flight and lands on the sought time', () => {
 		const scene = new Scene();
-		flyPastKeptPath(scene);
+		flyPastSampleCap(scene);
 		const traj = scene.trajectory;
-		const dropped = traj.samples[0].t;
-		expect(dropped).toBeGreaterThan(0);
-		const target = dropped / 2;
+		expect(traj.samples[0].t).toBe(0);
+		expect(traj.samples.length).toBeLessThanOrEqual(60_000);
+		const target = traj.samples[1].t * 3;
 		scene.seek(target);
-		expect(scene.trajectory).not.toBe(traj);
+		expect(scene.trajectory).toBe(traj);
 		expect(scene.t).toBe(target);
-		expect(scene.trajectory.samples[0].t).toBe(0);
-		expect(scene.trajectory.last.t).toBeGreaterThanOrEqual(target);
 		expect(scene.ship.t).toBe(target);
 		expect(scene.ship.phase).toBe('orbiting');
+		expect(scene.ship.r).toBeCloseTo(scene.plan.start.r, -3);
 	});
 
 	it('seeking within the kept path keeps the flight', () => {

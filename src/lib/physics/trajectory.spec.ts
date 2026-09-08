@@ -195,6 +195,33 @@ describe('trajectory, manoeuvre timing and limits', () => {
 	});
 });
 
+describe('trajectory, long flights', () => {
+	it('thins old samples instead of dropping the start, and keeps manoeuvres on a sample', () => {
+		const period = circularOrbitPeriod(earthField.mass, gps);
+		const traj = new Trajectory(earth, {
+			start: { r: gps, phi: 0, kind: 'orbit', direction: 1 },
+			manoeuvres: [{ at: period, kind: 'kick', dv: 0, heading: 'prograde' }]
+		});
+		const first = traj.samples[0];
+		traj.ensure(period);
+		const gapAtStart = traj.samples[1].t - traj.samples[0].t;
+		const end = 80 * period;
+		while (traj.last.t < end) traj.ensure(end);
+		const s = traj.samples;
+		expect(s.length).toBeLessThanOrEqual(60_000);
+		expect(s.length).toBeGreaterThan(40_000);
+		expect(s[0]).toBe(first);
+		expect(s[1].t - s[0].t).toBeGreaterThan(1.5 * gapAtStart);
+		expect(s[s.length - 1].t - s[s.length - 2].t).toBeLessThan(1.5 * gapAtStart);
+		expect(traj.samples.some((s) => s.t === period)).toBe(true);
+		expect(traj.stateAt(period).phi).toBeCloseTo(2 * Math.PI, 2);
+		expect(traj.stateAt(period / 3).r / gps).toBeCloseTo(1, 5);
+		for (let i = 1; i < traj.samples.length; i++) {
+			expect(traj.samples[i].t).toBeGreaterThan(traj.samples[i - 1].t);
+		}
+	});
+});
+
 describe('trajectory, manoeuvres on the live flight', () => {
 	it('a kick applied at the present matches the same kick planned from the start', () => {
 		const start = { r: gps, phi: 0, kind: 'orbit' as const, direction: 1 as const };

@@ -2,14 +2,22 @@ import type { Body } from '$lib/catalogue';
 import { formatLength, formatRelativeRate } from '$lib/format';
 import { earthReferenceDeficit, Trajectory, type FlightSample, type Plan } from '$lib/physics';
 import { fieldFor, solarDeficit, spaceFor } from '$lib/sim/defaults';
+import tokens from '../../app.css?raw';
 
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
 
-const PAPER = '#f5f2eb';
-const INK = '#16150f';
-const INK_SOFT = '#5f5b52';
-const ACCENT = '#b23a1d';
+/** A colour from the :root tokens in app.css, so the card and the page share one palette. */
+function token(name: string): string {
+	const hex = tokens.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6});`))?.[1];
+	if (!hex) throw new Error(`app.css has no colour token --${name}`);
+	return hex;
+}
+
+const PAPER = token('paper');
+const INK = token('ink');
+const INK_SOFT = token('ink-soft');
+const ACCENT = token('accent');
 const FONT = 'Schibsted Grotesk';
 
 const MARGIN = 72;

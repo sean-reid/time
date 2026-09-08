@@ -43,35 +43,31 @@
 </div>
 
 <dl class="readout">
-	<div>
+	<div class="wide">
 		<dt class="label">Drift since you left</dt>
 		<dd class="big">{formatDrift(scene.drift)}</dd>
 	</div>
-	<div>
+	<div class="wide">
 		<dt class="label">Your clock</dt>
 		<dd>{formatRelativeRate(scene.shipDeficit, scene.earthDeficit)}</dd>
 	</div>
-	<div class="pair">
-		<div>
-			<dt class="label">{scene.field.horizon !== null ? 'Above horizon' : 'Altitude'}</dt>
-			<dd>{altitude > 0 && scene.ship.phase !== 'horizon' ? formatLength(altitude) : 'none'}</dd>
-		</div>
-		<div>
-			<dt class="label">Speed</dt>
-			<dd>{scene.ship.phase === 'horizon' ? 'none' : formatSpeed(scene.ship.speed)}</dd>
-		</div>
+	<div>
+		<dt class="label">{scene.field.horizon !== null ? 'Above horizon' : 'Altitude'}</dt>
+		<dd>{altitude > 0 && scene.ship.phase !== 'horizon' ? formatLength(altitude) : 'none'}</dd>
 	</div>
-	<div class="pair">
-		<div>
-			<dt class="label">Thrust to hold</dt>
-			<dd>
-				{scene.ship.phase === 'horizon' ? 'nothing holds station' : formatThrust(scene.ship.thrust)}
-			</dd>
-		</div>
-		<div>
-			<dt class="label">Ship</dt>
-			<dd>{status}</dd>
-		</div>
+	<div>
+		<dt class="label">Speed</dt>
+		<dd>{scene.ship.phase === 'horizon' ? 'none' : formatSpeed(scene.ship.speed)}</dd>
+	</div>
+	<div>
+		<dt class="label">Thrust to hold</dt>
+		<dd>
+			{scene.ship.phase === 'horizon' ? 'nothing holds station' : formatThrust(scene.ship.thrust)}
+		</dd>
+	</div>
+	<div>
+		<dt class="label">Ship</dt>
+		<dd>{status}</dd>
 	</div>
 </dl>
 
@@ -118,7 +114,8 @@
 	.readout {
 		margin: 0;
 		display: grid;
-		gap: 14px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 14px 2px;
 	}
 	.readout div {
 		display: grid;
@@ -127,9 +124,8 @@
 	.readout dd {
 		margin: 0;
 	}
-	.pair {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 12px;
+	.wide {
+		grid-column: 1 / -1;
 	}
 	.big {
 		font-size: 22px;
@@ -185,11 +181,16 @@
 			gap: 12px;
 		}
 		.readout {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-			gap: 10px 12px;
+			gap: 10px 2px;
 		}
-		.readout .pair {
-			grid-column: 1 / -1;
+		.wide {
+			grid-column: auto;
+		}
+		.wide:first-child {
+			padding-right: 5px;
+		}
+		.wide + .wide {
+			padding-left: 5px;
 		}
 		.big {
 			font-size: 20px;

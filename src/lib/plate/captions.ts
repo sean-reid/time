@@ -43,6 +43,8 @@ export interface Placed extends Candidate {
 /** Discs nothing may cover, lines captions prefer to avoid, and the plate they must stay inside. */
 export interface Obstacles {
 	frame: Box;
+	/** Boxes other overlays own, such as the scale bar. */
+	reserved: Box[];
 	solids: Circle[];
 	lines: Circle[];
 	path: Segment[];
@@ -190,6 +192,7 @@ export function placeCaptions(requests: Request[], obstacles: Obstacles): Placed
 		const open = req.candidates.filter(
 			(c) =>
 				contains(obstacles.frame, c.box) &&
+				!obstacles.reserved.some((b) => intersects(b, c.box)) &&
 				!placed.some((p) => intersects(p.box, c.box)) &&
 				!obstacles.solids.some((s) => coversDisc(c.box, s))
 		);

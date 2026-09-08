@@ -12,7 +12,7 @@ import {
 } from './captions';
 
 const frame = { x: 0, y: 0, w: 1000, h: 800 };
-const empty: Obstacles = { frame, solids: [], lines: [], path: [] };
+const empty: Obstacles = { frame, reserved: [], solids: [], lines: [], path: [] };
 const origin = { x: 500, y: 400 };
 
 describe('caption geometry', () => {
@@ -46,6 +46,20 @@ describe('caption geometry', () => {
 });
 
 describe('placeCaptions', () => {
+	it('keeps captions out of a reserved box such as the scale bar', () => {
+		const you = {
+			text: 'You',
+			tone: 'accent' as const,
+			candidates: aroundPoint(origin, 8, 'You', ['NE', 'SW'])
+		};
+		const free = placeCaptions([you], empty);
+		const blocked = placeCaptions([you], { ...empty, reserved: [free[0].box] });
+		expect(blocked).toHaveLength(1);
+		expect(intersects(blocked[0].box, free[0].box)).toBe(false);
+		const everywhere = { x: 0, y: 0, w: 4000, h: 4000 };
+		expect(placeCaptions([you], { ...empty, reserved: [everywhere] })).toHaveLength(0);
+	});
+
 	it('keeps a lower priority caption off a higher one and hides it when nowhere is free', () => {
 		const you = {
 			text: 'You',

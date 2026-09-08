@@ -18,6 +18,7 @@
 	let mpp = $derived(scene.camera.frame / Math.min(w, h));
 
 	let reducedMotion = $state(false);
+	let narrow = $state(false);
 	let shownShip = $state({ x: 0, y: 0 });
 	let lastShown = 0;
 	$effect(() => {
@@ -56,10 +57,15 @@
 		reducedMotion = motion.matches;
 		const onMotion = () => (reducedMotion = motion.matches);
 		motion.addEventListener('change', onMotion);
+		const width = matchMedia('(max-width: 899px)');
+		narrow = width.matches;
+		const onWidth = () => (narrow = width.matches);
+		width.addEventListener('change', onWidth);
 		return {
 			destroy: () => {
 				ro.disconnect();
 				motion.removeEventListener('change', onMotion);
+				width.removeEventListener('change', onWidth);
 			}
 		};
 	}
@@ -148,6 +154,7 @@
 			{isochrones}
 			{companions}
 			ship={shownShip}
+			{narrow}
 		/>
 	</svg>
 

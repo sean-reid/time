@@ -115,7 +115,7 @@
 		margin: 0;
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 14px 2px;
+		gap: 14px 12px;
 	}
 	.readout div {
 		display: grid;
@@ -181,16 +181,10 @@
 			gap: 12px;
 		}
 		.readout {
-			gap: 10px 2px;
+			gap: 10px 12px;
 		}
 		.wide {
 			grid-column: auto;
-		}
-		.wide:first-child {
-			padding-right: 5px;
-		}
-		.wide + .wide {
-			padding-left: 5px;
 		}
 		.big {
 			font-size: 20px;

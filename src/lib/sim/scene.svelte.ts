@@ -29,6 +29,8 @@ export type Phase = 'orbiting' | 'coasting' | 'holding' | 'landed' | 'horizon';
 
 /** Bounded ensure calls a replay may spend catching up to the present before the clock yields. */
 const CATCH_UP_CALLS = 8;
+/** A frame after a background tab or a stall counts as this long, so the clock resumes, not leaps. */
+const MAX_FRAME_SECONDS = 0.25;
 /** Consecutive frames over the cap before the warp is pulled down to it. */
 const OVER_CAP_FRAMES = 30;
 
@@ -194,6 +196,7 @@ export class Scene {
 
 	advance(realSeconds: number) {
 		if (!this.playing) return;
+		realSeconds = Math.min(realSeconds, MAX_FRAME_SECONDS);
 		const from = this.t;
 		const target = from + realSeconds * this.warp;
 		const before = this.trajectory.samples.length;
@@ -227,7 +230,7 @@ export class Scene {
 			this.space.regime === 'geodesic'
 				? this.field.orbitPeriod(s.r, this.plan.start.direction)
 				: keplerPeriod(G * this.field.mass, s.r, s.speed);
-		return warpCap(period);
+		return warpCap(period, this.space.regime);
 	});
 
 	stepWarp(direction: 1 | -1) {

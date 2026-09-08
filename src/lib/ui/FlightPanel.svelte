@@ -16,7 +16,10 @@
 
 	let fraction = $state(0.2);
 	let field = $derived(scene.field);
-	let reference = $derived(Math.max(scene.ship.speed, field.orbitLocalSpeed(scene.ship.r)));
+	let reference = $derived.by(() => {
+		const v = Math.max(scene.ship.speed, field.orbitLocalSpeed(scene.ship.r));
+		return Number.isFinite(v) ? v : 0;
+	});
 	let dv = $derived(fraction * reference);
 	let dead = $derived(scene.ship.phase === 'horizon' || scene.ship.phase === 'landed');
 
@@ -117,7 +120,11 @@
 	</div>
 
 	<div class="kick">
-		<span class="label">Kick by <span class="unit">{formatSpeed(dv)}</span></span>
+		{#if dead}
+			<span class="label">No kick from here</span>
+		{:else}
+			<span class="label">Kick by <span class="unit">{formatSpeed(dv)}</span></span>
+		{/if}
 		<div class="row">
 			{#each FRACTIONS as f (f)}
 				<button type="button" onclick={() => (fraction = f)} aria-pressed={fraction === f}>

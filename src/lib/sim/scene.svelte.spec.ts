@@ -84,6 +84,22 @@ describe('Scene', () => {
 		expect(scene.ship.speed).toBeGreaterThan(0);
 	});
 
+	it('shows a hold, a release, and a kick at once while paused', () => {
+		const scene = new Scene();
+		scene.warp = 60;
+		fly(scene, 120);
+		scene.playing = false;
+		const before = scene.ship.speed;
+		scene.hold();
+		expect(scene.ship.holding).toBe(true);
+		scene.letGo();
+		expect(scene.ship.holding).toBe(false);
+		expect(scene.ship.speed).toBe(0);
+		scene.kick(500, 'prograde');
+		expect(scene.ship.speed).toBeCloseTo(500, 0);
+		expect(before).toBeGreaterThan(1000);
+	});
+
 	it('restart clears the manoeuvres and returns the clock to zero', () => {
 		const scene = new Scene();
 		scene.warp = 600;

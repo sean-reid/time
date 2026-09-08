@@ -72,7 +72,10 @@ export class Scene {
 	earthDeficit = $derived(earthReferenceDeficit());
 	/** The Sun's share of this scene's deficit, so every scene is measured against the same time. */
 	solar = $derived(solarDeficit(this.body));
-	ship = $derived<ShipState>(this.stateAt(this.t));
+	ship = $derived.by<ShipState>(() => {
+		void this.samplesVersion;
+		return this.stateAt(this.t);
+	});
 	/** Total rate deficit of the ship's clock against barycentric time. */
 	shipDeficit = $derived(this.ship.deficit + this.solar - this.ship.deficit * this.solar);
 	shipTau = $derived(this.ship.tau - this.solar * this.t);

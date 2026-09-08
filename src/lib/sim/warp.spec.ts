@@ -34,9 +34,15 @@ describe('warpCap', () => {
 		expect(cap).toBeLessThan(WARPS[WARPS.length - 1]);
 	});
 
+	it('allows less on a Newtonian orbit, which takes ten times the steps', () => {
+		const period = 43_082;
+		expect(warpCap(period, 'newtonian')).toBeLessThan(warpCap(period, 'geodesic'));
+		expect(warpCap(period, 'newtonian')).toBeLessThanOrEqual((20_000 * period * 60) / 3142);
+	});
+
 	it('never rises as the orbit tightens', () => {
 		const periods = [1e7, 1e6, 1e5, 1e4, 1e3, 1e2, 1e1, 1];
-		const caps = periods.map(warpCap);
+		const caps = periods.map((p) => warpCap(p));
 		for (let i = 1; i < caps.length; i++) expect(caps[i]).toBeLessThanOrEqual(caps[i - 1]);
 	});
 });

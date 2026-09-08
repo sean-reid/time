@@ -100,6 +100,14 @@ describe('Scene', () => {
 		expect(before).toBeGreaterThan(1000);
 	});
 
+	it('treats a long frame gap as a short frame instead of leaping', () => {
+		const scene = new Scene();
+		scene.warp = 60;
+		scene.advance(600);
+		expect(scene.t).toBeLessThanOrEqual(0.25 * 60 + 1e-9);
+		expect(scene.t).toBeGreaterThan(0);
+	});
+
 	it('restart clears the manoeuvres and returns the clock to zero', () => {
 		const scene = new Scene();
 		scene.warp = 600;

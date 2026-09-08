@@ -61,11 +61,7 @@
 			out.push({ r: field.isco(1), label: field.spin ? 'ISCO, prograde' : 'ISCO', dash: '6 4' });
 			if (field.spin) {
 				out.push({ r: field.isco(-1), label: 'ISCO, retrograde', dash: '6 4' });
-				out.push({
-					r: 2 * (rs / (1 + Math.sqrt(1 - field.spin ** 2))),
-					label: 'ergosphere',
-					dash: '1 3'
-				});
+				out.push({ r: field.ergosphere!, label: 'ergosphere', dash: '1 3' });
 			}
 		}
 		for (const o of scene.body.orbits ?? [])
@@ -93,24 +89,30 @@
 		return keep;
 	});
 
-	/** Companions where they really are now, with the ellipse each one follows. */
-	let companions = $derived.by(() => {
-		const since = epochSeconds(scene.departedAt) + scene.t;
-		return (scene.body.companions ?? []).map((c) => {
-			const partner = bodyById(c.body);
+	/** The ellipse each companion follows, in screen space; depends on the camera, not the clock. */
+	let companionOrbits = $derived.by(() =>
+		(scene.body.companions ?? []).map((c) => {
 			const el = elementsOf(c);
-			const now = keplerState(el, since);
 			let d = '';
 			for (let i = 0; i <= 180; i++) {
 				const p = keplerState(el, (el.period * i) / 180);
 				d += `${i === 0 ? 'M' : 'L'}${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`;
 			}
+			return d;
+		})
+	);
+	/** Companions where they really are now. */
+	let companions = $derived.by(() => {
+		const since = epochSeconds(scene.departedAt) + scene.t;
+		return (scene.body.companions ?? []).map((c, i) => {
+			const partner = bodyById(c.body);
+			const now = keplerState(elementsOf(c), since);
 			return {
 				name: partner.name,
 				radius: partner.radius?.value ?? 0,
 				x: now.x,
 				y: now.y,
-				path: d
+				path: companionOrbits[i]
 			};
 		});
 	});
@@ -494,7 +496,8 @@
 			grid-auto-flow: column;
 		}
 		.scale {
-			bottom: 68px;
+			top: 44px;
+			bottom: auto;
 		}
 	}
 </style>

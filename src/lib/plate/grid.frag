@@ -4,6 +4,7 @@ precision highp float;
 uniform vec2 uRes;
 uniform float uMpp;
 uniform vec2 uCentreRes;
+uniform vec2 uCentre;
 uniform float uRs;
 uniform float uSpacing;
 uniform float uSubFade;
@@ -21,7 +22,7 @@ float lineAt(vec2 f, float weight) {
 
 void main() {
 	vec2 offset = (gl_FragCoord.xy - uRes * 0.5) * uMpp;
-	vec2 world = offset + uCentreRes;
+	vec2 world = offset + uCentre;
 	float r = length(world);
 	if (uRs > 0.0 && r <= uInner) {
 		outColor = vec4(0.0);

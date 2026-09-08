@@ -59,6 +59,9 @@ function zamo(m: Metric): { omega: number; alpha: number } {
 	return { omega, alpha: Math.sqrt(-m.gtt + (m.gtp * m.gtp) / m.gpp) };
 }
 
+/** No kick can take the ship past this fraction of c relative to the local frame. */
+export const MAX_LOCAL_SPEED = 0.999;
+
 /** Four-velocity from a velocity (as a fraction of c) measured in the local ZAMO frame. */
 export function fromLocal(
 	r: number,
@@ -68,8 +71,12 @@ export function fromLocal(
 ): { ut: number; up: number; ur: number; E: number; L: number } {
 	const m = metricAt(r, a);
 	const { omega, alpha } = zamo(m);
-	const v2 = vr * vr + vphi * vphi;
-	const gamma = 1 / Math.sqrt(1 - Math.min(v2, 1 - 1e-12));
+	const speed = Math.hypot(vr, vphi);
+	if (speed > MAX_LOCAL_SPEED) {
+		vr *= MAX_LOCAL_SPEED / speed;
+		vphi *= MAX_LOCAL_SPEED / speed;
+	}
+	const gamma = 1 / Math.sqrt(1 - vr * vr - vphi * vphi);
 	const ut = gamma / alpha;
 	const up = omega * ut + (gamma * vphi) / Math.sqrt(m.gpp);
 	const ur = (gamma * vr) / Math.sqrt(m.grr);

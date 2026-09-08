@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { GM_EARTH, GM_SUN, G, L_G, R_EARTH, R_SUN, SECONDS_PER_DAY, M_SUN } from './constants';
+import {
+	GM_EARTH,
+	GM_SUN,
+	G,
+	L_B,
+	L_C,
+	L_G,
+	R_EARTH,
+	R_SUN,
+	SECONDS_PER_DAY,
+	M_SUN
+} from './constants';
 import { earthReferenceDeficit, relativeRateMinusOne } from './earth';
 import {
 	circularOrbitDeficit,
@@ -31,13 +42,14 @@ describe('Schwarzschild', () => {
 
 	it('makes a GPS clock gain 38.6 microseconds per day against sea level', () => {
 		const gps = circularOrbitDeficit(M_EARTH, 26_560e3);
-		const perDay = relativeRateMinusOne(gps, earthReferenceDeficit(true)) * SECONDS_PER_DAY;
+		const perDay = relativeRateMinusOne(gps + L_C, earthReferenceDeficit()) * SECONDS_PER_DAY;
 		expect(perDay * 1e6).toBeCloseTo(38.6, 0);
 		expect(circularOrbitPeriod(M_EARTH, 26_560e3) / 3600).toBeCloseTo(11.97, 1);
 	});
 
 	it('uses the IAU sea level deficit', () => {
-		expect(earthReferenceDeficit(true)).toBe(L_G);
+		expect(earthReferenceDeficit()).toBe(L_B);
+		expect(L_B - L_C).toBeCloseTo(L_G, 15);
 		expect(staticDeficit(M_EARTH, R_EARTH)).toBeLessThan(L_G);
 	});
 

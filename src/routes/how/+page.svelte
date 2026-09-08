@@ -21,7 +21,7 @@
 	<p>
 		Earth's clock is a clock at sea level. It shows your actual local time. Your clock left Earth in
 		sync with it when the page loaded. The drift counter is the difference between them. Both tick
-		in real seconds unless you speed time up, and the speed-up factor is always shown.
+		in real seconds unless you speed time up.
 	</p>
 
 	<h2 class="label">Where time slows</h2>
@@ -84,7 +84,7 @@
 	<h2 class="label">GPS, the everyday case</h2>
 	<p>
 		At sea level Earth's own field slows a clock by 6.97 parts in 10<sup>10</sup>, the IAU constant
-		<math><msub><mi>L</mi><mi>G</mi></msub></math>. A GPS satellite at 20 180 km altitude sits
+		<math><msub><mi>L</mi><mi>G</mi></msub></math>. A GPS satellite at 20 200 km altitude sits
 		higher in the well and gains about 45.7 µs a day. It also moves at 3.87 km/s and loses about 7.2
 		µs a day. Net, its clock gains about 38.6 µs a day, and the system corrects for it.
 	</p>
@@ -117,22 +117,25 @@
 	<p>
 		Start on a circular orbit, prograde or retrograde, or hold station. From then on the ship is in
 		free fall unless you act. A kick changes its speed at once by a chosen fraction of its current
-		speed, prograde, retrograde, outward or inward, as measured by observers holding station where
-		the ship is. Holding station stops the ship dead and keeps it there; the panel shows the thrust
-		that takes, in g, which grows without bound at a horizon. Letting go drops it from rest.
+		speed, or of the local orbital speed while it holds station, applied prograde, retrograde,
+		outward or inward as measured by observers holding station where the ship is. Holding station
+		stops the ship dead and keeps it there; the panel shows the thrust that takes, in g, which grows
+		without bound at a horizon. Letting go drops it from rest.
 	</p>
 	<p>
 		Around black holes, neutron stars, magnetars and white dwarfs the ship follows exact equatorial
 		geodesics of the Kerr metric, Schwarzschild when the spin is zero. Around the Sun, planets and
 		moons it moves under Newtonian gravity from the central body and its companions, and its clock
-		runs at the post-Newtonian rate: one, minus the summed potentials over
-		<math><msup><mi>c</mi><mn>2</mn></msup></math>, minus
+		runs at the first-order rate: one minus the summed potentials over
+		<math><msup><mi>c</mi><mn>2</mn></msup></math>, times
 		<math
-			><mfrac
-				><msup><mi>v</mi><mn>2</mn></msup><mrow><mn>2</mn><msup><mi>c</mi><mn>2</mn></msup></mrow
-				></mfrac
+			><msqrt
+				><mn>1</mn><mo>−</mo><mfrac
+					><msup><mi>v</mi><mn>2</mn></msup><msup><mi>c</mi><mn>2</mn></msup></mfrac
+				></msqrt
 			></math
-		>. That is exact to far beyond what the display can show.
+		>. Each scene also carries the Sun's share for the body it is centred on, so every clock here is
+		measured against the same barycentric time as Earth's.
 	</p>
 	<p>
 		Companions move on their real Kepler ellipses from published elements, placed where they are
@@ -168,8 +171,8 @@
 		</dd>
 		<dt>Ergosphere</dt>
 		<dd>
-			Inside 2 around a spinning hole nothing can stay still. The ship holds radius while dragged
-			space sweeps it around, a zero angular momentum observer.
+			Inside 2 around a spinning hole nothing can stay still. If you hold station inside it, the
+			ship holds radius while dragged space sweeps it around, a zero angular momentum observer.
 		</dd>
 	</dl>
 
@@ -187,8 +190,8 @@
 
 	<h2 class="label">Scale</h2>
 	<p>
-		Everything is drawn to true size. Zoom is logarithmic. A scale bar and its light travel time are
-		always on screen. Nothing is compressed to fit.
+		Distances are to scale. Zoom is logarithmic. A scale bar and its light travel time are always on
+		screen. Nothing is compressed to fit.
 	</p>
 
 	<h2 class="label">Sources</h2>
@@ -197,7 +200,10 @@
 			<a href="https://arxiv.org/abs/1605.09788">IAU 2015 Resolution B3, nominal values</a>, Prša et
 			al. 2016.
 		</li>
-		<li><a href="https://physics.nist.gov/cuu/Constants/">CODATA 2018</a>, NIST.</li>
+		<li>
+			<a href="https://physics.nist.gov/cuu/Constants/">CODATA (2018 values, unchanged in 2022)</a>,
+			NIST.
+		</li>
 		<li>
 			<a href="https://iauarchive.eso.org/static/resolutions/IAU2000_French.pdf"
 				>IAU 2000 Resolution B1.9</a

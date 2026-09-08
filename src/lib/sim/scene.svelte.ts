@@ -2,16 +2,40 @@ import { bodyById, type Body } from '$lib/catalogue';
 import {
 	earthReferenceDeficit,
 	Trajectory,
+	type Field,
 	type FlightSample,
 	type Heading,
 	type Plan,
 	type Space,
 	type Start
 } from '$lib/physics';
-import { defaultCamera, defaultPlan, fieldFor, spaceFor, WARPS, type Camera } from './defaults';
+import {
+	defaultCamera,
+	defaultPlan,
+	fieldFor,
+	solarDeficit,
+	spaceFor,
+	WARPS,
+	type Camera
+} from './defaults';
 import type { SceneSnapshot } from './url';
 
 export type Phase = 'orbiting' | 'coasting' | 'holding' | 'landed' | 'horizon';
+
+/** Roughly how many integrator steps one frame can afford, and how many an orbit takes. */
+const STEPS_PER_FRAME = 20_000;
+const STEPS_PER_ORBIT = 320;
+
+/** Keep a start where an orbit or a hold can exist. */
+function sanitiseStart(start: Start, field: Field): Start {
+	if (start.kind === 'orbit') {
+		const floor = field.photonOrbit(start.direction) * 1.01;
+		const isco = field.isco(start.direction);
+		return { ...start, r: start.r <= floor ? Math.max(isco, floor) : start.r };
+	}
+	const floor = field.surface * 1.0005;
+	return { ...start, r: Math.max(floor, start.r) };
+}
 
 export interface ShipState extends FlightSample {
 	phase: Phase;
@@ -40,18 +64,23 @@ export class Scene {
 		void this.generation;
 		return new Trajectory(this.space, this.plan);
 	});
-	earthDeficit = $derived(earthReferenceDeficit(this.body.id === 'earth'));
+	earthDeficit = $derived(earthReferenceDeficit());
+	/** The Sun's share of this scene's deficit, so every scene is measured against the same time. */
+	solar = $derived(solarDeficit(this.body));
 	ship = $derived<ShipState>(this.stateAt(this.t));
+	/** Total rate deficit of the ship's clock against barycentric time. */
+	shipDeficit = $derived(this.ship.deficit + this.solar - this.ship.deficit * this.solar);
+	shipTau = $derived(this.ship.tau - this.solar * this.t);
 	earthElapsed = $derived(this.t * (1 - this.earthDeficit));
-	drift = $derived(this.ship.tau - this.earthElapsed);
-	shipMs = $derived(this.departedAt + this.ship.tau * 1000);
+	drift = $derived(this.shipTau - this.earthElapsed);
+	shipMs = $derived(this.departedAt + this.shipTau * 1000);
 	earthMs = $derived(this.departedAt + this.earthElapsed * 1000);
 
 	constructor(snapshot?: SceneSnapshot | null) {
 		if (snapshot) {
 			this.body = bodyById(snapshot.body);
-			this.plan = snapshot.plan;
-			this.warp = snapshot.warp;
+			this.plan = { ...snapshot.plan, start: sanitiseStart(snapshot.plan.start, this.field) };
+			this.warp = Math.min(snapshot.warp, this.maxWarp);
 			this.t = snapshot.t;
 			this.camera = snapshot.camera ?? defaultCamera(snapshot.plan);
 		} else {
@@ -70,7 +99,10 @@ export class Scene {
 
 	setStart(start: Partial<Start>) {
 		this.tour = null;
-		this.plan = { start: { ...this.plan.start, ...start }, manoeuvres: [] };
+		this.plan = {
+			start: sanitiseStart({ ...this.plan.start, ...start }, this.field),
+			manoeuvres: []
+		};
 		this.restart();
 	}
 
@@ -139,9 +171,17 @@ export class Scene {
 		this.t = this.trajectory.ending ? target : Math.min(target, this.trajectory.last.t);
 	}
 
+	/** Fastest warp the integrator can honour here at sixty frames a second. */
+	maxWarp = $derived.by(() => {
+		const period = this.field.orbitPeriod(this.plan.start.r, this.plan.start.direction);
+		const allowed = WARPS.filter((w) => w <= STEPS_PER_FRAME * (period / STEPS_PER_ORBIT) * 60);
+		return allowed[allowed.length - 1] ?? WARPS[0];
+	});
+
 	stepWarp(direction: 1 | -1) {
 		const i = WARPS.indexOf(this.warp);
-		this.warp = WARPS[Math.min(WARPS.length - 1, Math.max(0, (i < 0 ? 0 : i) + direction))];
+		const next = WARPS[Math.min(WARPS.length - 1, Math.max(0, (i < 0 ? 0 : i) + direction))];
+		this.warp = Math.min(next, this.maxWarp);
 	}
 
 	snapshot(): SceneSnapshot {
@@ -157,13 +197,14 @@ export class Scene {
 			if (ending.kind === 'horizon') {
 				return { ...s, t, deficit: 1, speed: 0, thrust: 0, holding: false, phase: 'horizon' };
 			}
+			const deficit = ending.deficit ?? this.field.hoverDeficit(s.r);
 			return {
 				...s,
 				t,
-				tau: s.tau + (t - ending.t) * (1 - this.field.hoverDeficit(s.r)),
-				deficit: this.field.hoverDeficit(s.r),
+				tau: s.tau + (t - ending.t) * (1 - deficit),
+				deficit,
 				speed: 0,
-				thrust: this.field.hoverAcceleration(s.r),
+				thrust: ending.thrust ?? this.field.hoverAcceleration(s.r),
 				holding: true,
 				phase: 'landed'
 			};

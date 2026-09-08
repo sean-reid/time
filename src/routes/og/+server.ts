@@ -13,13 +13,7 @@ function defaultScene(): { body: Body; plan: Plan } {
 
 function svgFor(encoded: string | null): string {
 	const scene = encoded ? decodeScene(encoded) : null;
-	if (scene) {
-		try {
-			return cardSvg(bodyById(scene.body), scene.plan);
-		} catch {
-			// a stale or hand-edited link still gets a card
-		}
-	}
+	if (scene) return cardSvg(bodyById(scene.body), scene.plan);
 	const { body, plan } = defaultScene();
 	return cardSvg(body, plan);
 }

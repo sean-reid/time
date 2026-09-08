@@ -134,18 +134,6 @@ export class Scene {
 		}
 	}
 
-	removeManoeuvre(index: number) {
-		this.tour = null;
-		this.plan = { ...this.plan, manoeuvres: this.plan.manoeuvres.filter((_, i) => i !== index) };
-		this.rebuild();
-	}
-
-	clearManoeuvres() {
-		this.tour = null;
-		this.plan = { ...this.plan, manoeuvres: [] };
-		this.rebuild();
-	}
-
 	/** Back to the start orbit at its own speed; a tour keeps its scripted flight and replays it. */
 	restart() {
 		if (!this.tour) this.plan = { ...this.plan, manoeuvres: [] };

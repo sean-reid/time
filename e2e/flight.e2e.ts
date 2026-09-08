@@ -11,7 +11,7 @@ test('a kick bends the running flight without replaying it', async ({ page }) =>
 	expect(origin).not.toBeNull();
 	const before = Number(await clock.inputValue());
 	await page.getByRole('button', { name: 'Prograde', exact: true }).click();
-	await expect(page.getByRole('button', { name: 'Undo all' })).toBeEnabled();
+	await expect(page.locator('.manoeuvres li')).toHaveCount(1);
 	expect(Number(await clock.inputValue())).toBeGreaterThanOrEqual(before);
 	const after = (await course.getAttribute('d'))?.match(/^M\s*(-?\d+)\S*\s+(-?\d+)/);
 	expect(after?.slice(1)).toEqual(origin?.slice(1));
@@ -23,9 +23,9 @@ test('restart puts the ship back on its start orbit without the kicks', async ({
 	for (let i = 0; i < 4; i++) await faster.click();
 	await page.getByRole('button', { name: '50%' }).click();
 	await page.getByRole('button', { name: 'Retrograde', exact: true }).click();
-	await expect(page.getByRole('button', { name: 'Undo all' })).toBeEnabled();
+	await expect(page.locator('.manoeuvres li')).toHaveCount(1);
 	await page.getByRole('button', { name: 'Restart' }).click();
-	await expect(page.getByRole('button', { name: 'Undo all' })).toBeDisabled();
+	await expect(page.locator('.manoeuvres')).toHaveCount(0);
 	await expect(page.locator('.timeline input')).toHaveValue(/^\d+(\.\d+)?$/);
 	await expect(page.locator('dd').filter({ hasText: /per revolution/ })).toBeVisible();
 });

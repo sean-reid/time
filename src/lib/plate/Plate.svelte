@@ -1,14 +1,12 @@
 <script lang="ts">
-	import { formatLength, formatPercent } from '$lib/format';
-	import { C, keplerState, schwarzschildRadius } from '$lib/physics';
-	import { bodyById } from '$lib/catalogue';
-	import { elementsOf, epochSeconds } from '$lib/sim/defaults';
 	import type { Scene } from '$lib/sim/scene.svelte';
-	import { SvelteMap } from 'svelte/reactivity';
+	import { Gestures, panCamera, zoomCamera } from './camera';
+	import Companions from './Companions.svelte';
+	import Course from './Course.svelte';
 	import Grid from './Grid.svelte';
-	import { isochroneRadius } from './metric';
-	import { Trail } from './trail';
-	import type { FlightSample } from '$lib/physics';
+	import Rings from './Rings.svelte';
+	import ScaleBar from './ScaleBar.svelte';
+	import { polarXY, type View } from './view';
 
 	let { scene }: { scene: Scene } = $props();
 
@@ -16,11 +14,6 @@
 	let h = $state(1000);
 	let mpp = $derived(scene.camera.frame / Math.min(w, h));
 
-	const ISOCHRONES = [0.9, 0.5, 0.1, 0.01];
-
-	function polarXY(p: { r: number; phi: number }) {
-		return { x: p.r * Math.cos(p.phi), y: p.r * Math.sin(p.phi) };
-	}
 	let reducedMotion = $state(false);
 	let shownShip = $state({ x: 0, y: 0 });
 	let lastShown = 0;
@@ -36,138 +29,13 @@
 			shownShip = xy;
 		}
 	});
-	let shipXY = $derived(shownShip);
-	let centre = $derived(scene.camera.follow ? shipXY : { x: scene.camera.cx, y: scene.camera.cy });
-
-	function sx(x: number) {
-		return w / 2 + (x - centre.x) / mpp;
-	}
-	function sy(y: number) {
-		return h / 2 - (y - centre.y) / mpp;
-	}
-	function px(metres: number) {
-		return metres / mpp;
-	}
-	function visibleRing(r: number) {
-		const p = px(r);
-		return p > 6 && p < 40_000;
-	}
+	let centre = $derived(
+		scene.camera.follow ? shownShip : { x: scene.camera.cx, y: scene.camera.cy }
+	);
+	let view = $derived<View>({ w, h, mpp, cx: centre.x, cy: centre.y });
 
 	let field = $derived(scene.field);
 	let rs = $derived(field.horizon ?? 0);
-	let hole = $derived(field.horizon !== null);
-	let rings = $derived.by(() => {
-		const out: { r: number; label: string; dash: string; faint?: boolean }[] = [];
-		if (hole) {
-			out.push({ r: field.photonOrbit(1), label: 'photon sphere', dash: '2 3' });
-			out.push({ r: field.isco(1), label: field.spin ? 'ISCO, prograde' : 'ISCO', dash: '6 4' });
-			if (field.spin) {
-				out.push({ r: field.isco(-1), label: 'ISCO, retrograde', dash: '6 4' });
-				out.push({ r: field.ergosphere!, label: 'ergosphere', dash: '1 3' });
-			}
-		}
-		for (const o of scene.body.orbits ?? [])
-			out.push({ r: o.radius.value, label: o.name, dash: '' });
-		return out.filter((x) => visibleRing(x.r) && x.r > field.surface);
-	});
-	let isochrones = $derived.by(() => {
-		const rsBody = field.horizon ?? schwarzschildRadius(field.mass);
-		return ISOCHRONES.map((rate) => ({ r: isochroneRadius(rsBody, rate), rate })).filter(
-			(x) => visibleRing(x.r) && x.r > field.surface
-		);
-	});
-	/** Ring radii that get a caption: at least 16 px apart so captions do not stack. */
-	let labelled = $derived.by(() => {
-		const radii = [...rings.map((r) => r.r), ...isochrones.map((i) => i.r)].sort((a, b) => a - b);
-		const keep: number[] = [];
-		let last = -Infinity;
-		for (const r of radii) {
-			const p = px(r);
-			if (p >= 24 && p - last >= 16) {
-				keep.push(r);
-				last = p;
-			}
-		}
-		return keep;
-	});
-
-	/** The ellipse each companion follows, in screen space; depends on the camera, not the clock. */
-	let companionOrbits = $derived.by(() =>
-		(scene.body.companions ?? []).map((c) => {
-			const el = elementsOf(c);
-			let d = '';
-			for (let i = 0; i <= 180; i++) {
-				const p = keplerState(el, (el.period * i) / 180);
-				d += `${i === 0 ? 'M' : 'L'}${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`;
-			}
-			return d;
-		})
-	);
-	/** Companions where they really are now. */
-	let companions = $derived.by(() => {
-		const since = epochSeconds(scene.departedAt) + scene.t;
-		return (scene.body.companions ?? []).map((c, i) => {
-			const partner = bodyById(c.body);
-			const now = keplerState(elementsOf(c), since);
-			return {
-				name: partner.name,
-				radius: partner.radius?.value ?? 0,
-				x: now.x,
-				y: now.y,
-				path: companionOrbits[i]
-			};
-		});
-	});
-
-	let barMetres = $derived(10 ** Math.floor(Math.log10(mpp * 160)));
-	let lightLabel = $derived.by(() => {
-		const s = barMetres / C;
-		const two = (x: number) =>
-			x >= 100 ? String(Math.round(x)) : String(Number(x.toPrecision(2)));
-		if (s < 1) return `${two(s * 1000)} ms of light`;
-		if (s < 60) return `${two(s)} s of light`;
-		if (s < 3600) return `${two(s / 60)} min of light`;
-		return `${two(s / 3600)} h of light`;
-	});
-
-	let heading = $derived.by(() => {
-		const a = scene.trajectory.stateAt(Math.max(0, scene.t - 1e-3 * Math.max(1, scene.warp)));
-		const ax = polarXY(a);
-		const bx = polarXY(scene.ship);
-		const ang = Math.atan2(bx.y - ax.y, bx.x - ax.x);
-		return Number.isFinite(ang) ? (ang * 180) / Math.PI : 0;
-	});
-
-	/** The flown path in screen pixels at the current zoom, panned by a transform so it grows in place. */
-	const trailCache = new Trail();
-	let trailOrigin = $state({ x: 0, y: 0 });
-	let trail = $derived.by(() => {
-		void scene.samplesVersion;
-		const pts = scene.trajectory.samples;
-		const origin = trailOrigin;
-		const key = `${scene.camera.frame}|${w}|${h}|${origin.x}|${origin.y}`;
-		const project = (s: FlightSample) => {
-			const p = polarXY(s);
-			return { x: w / 2 + (p.x - origin.x) / mpp, y: h / 2 - (p.y - origin.y) / mpp };
-		};
-		const d = trailCache.extend(pts, key, project);
-		const last = pts[pts.length - 1];
-		if (!last) return '';
-		const p = project(last);
-		return `${d}${d ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-	});
-	let trailShift = $derived(
-		`translate(${((trailOrigin.x - centre.x) / mpp).toFixed(2)} ${(-(trailOrigin.y - centre.y) / mpp).toFixed(2)})`
-	);
-	$effect(() => {
-		const dx = Math.abs(centre.x - trailOrigin.x) / mpp;
-		const dy = Math.abs(centre.y - trailOrigin.y) / mpp;
-		if (dx > 1e5 || dy > 1e5) trailOrigin = { x: centre.x, y: centre.y };
-	});
-
-	let marks = $derived(
-		scene.plan.manoeuvres.map((m) => ({ ...polarXY(scene.trajectory.stateAt(m.at)), kind: m.kind }))
-	);
 
 	function observe(node: HTMLElement) {
 		const ro = new ResizeObserver(([e]) => {
@@ -187,9 +55,21 @@
 		};
 	}
 
+	function zoomAt(factor: number, atX: number, atY: number) {
+		scene.camera = zoomCamera(scene.camera, view, field.surface * 0.02, factor, atX, atY);
+	}
+	function pan(dx: number, dy: number) {
+		scene.camera = panCamera(scene.camera, view, dx, dy);
+	}
+	function recentre() {
+		scene.camera = { ...scene.camera, cx: 0, cy: 0, follow: false };
+	}
+	function toggleFollow() {
+		scene.camera = { ...scene.camera, follow: !scene.camera.follow };
+	}
+	const gestures = new Gestures({ zoom: zoomAt, pan });
+
 	function onKey(e: KeyboardEvent) {
-		const pan = 40 * mpp;
-		const cam = scene.camera;
 		switch (e.key) {
 			case '+':
 			case '=':
@@ -200,16 +80,16 @@
 				zoomAt(1.6, w / 2, h / 2);
 				break;
 			case 'ArrowLeft':
-				scene.camera = { ...cam, cx: centre.x - pan, cy: centre.y, follow: false };
+				pan(40, 0);
 				break;
 			case 'ArrowRight':
-				scene.camera = { ...cam, cx: centre.x + pan, cy: centre.y, follow: false };
+				pan(-40, 0);
 				break;
 			case 'ArrowUp':
-				scene.camera = { ...cam, cx: centre.x, cy: centre.y + pan, follow: false };
+				pan(0, 40);
 				break;
 			case 'ArrowDown':
-				scene.camera = { ...cam, cx: centre.x, cy: centre.y - pan, follow: false };
+				pan(0, -40);
 				break;
 			case 'c':
 				recentre();
@@ -222,75 +102,6 @@
 		}
 		e.preventDefault();
 	}
-
-	function zoomAt(factor: number, atX: number, atY: number) {
-		const worldX = centre.x + (atX - w / 2) * mpp;
-		const worldY = centre.y - (atY - h / 2) * mpp;
-		const frame = Math.min(1e22, Math.max(field.surface * 0.02, scene.camera.frame * factor));
-		const nextMpp = frame / Math.min(w, h);
-		if (scene.camera.follow) {
-			scene.camera = { ...scene.camera, frame };
-			return;
-		}
-		scene.camera = {
-			frame,
-			cx: worldX - (atX - w / 2) * nextMpp,
-			cy: worldY + (atY - h / 2) * nextMpp,
-			follow: false
-		};
-	}
-
-	function onWheel(e: WheelEvent) {
-		e.preventDefault();
-		zoomAt(Math.exp(e.deltaY * 0.0015), e.offsetX, e.offsetY);
-	}
-
-	const pointers = new SvelteMap<number, { x: number; y: number }>();
-	let lastPinch = 0;
-
-	function onPointerDown(e: PointerEvent) {
-		if ((e.target as HTMLElement).closest('button')) return;
-		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-		pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
-		if (pointers.size === 2) lastPinch = pinchDistance();
-	}
-	function pinchDistance() {
-		const [a, b] = [...pointers.values()];
-		return Math.hypot(a.x - b.x, a.y - b.y);
-	}
-	function onPointerMove(e: PointerEvent) {
-		const prev = pointers.get(e.pointerId);
-		if (!prev) return;
-		const cur = { x: e.offsetX, y: e.offsetY };
-		pointers.set(e.pointerId, cur);
-		if (pointers.size === 2) {
-			const d = pinchDistance();
-			if (lastPinch > 0) {
-				const [a, b] = [...pointers.values()];
-				zoomAt(lastPinch / d, (a.x + b.x) / 2, (a.y + b.y) / 2);
-			}
-			lastPinch = d;
-			return;
-		}
-		if (e.buttons === 0) return;
-		scene.camera = {
-			frame: scene.camera.frame,
-			cx: centre.x - (cur.x - prev.x) * mpp,
-			cy: centre.y + (cur.y - prev.y) * mpp,
-			follow: false
-		};
-	}
-	function onPointerUp(e: PointerEvent) {
-		pointers.delete(e.pointerId);
-		if (pointers.size < 2) lastPinch = 0;
-	}
-
-	function recentre() {
-		scene.camera = { ...scene.camera, cx: 0, cy: 0, follow: false };
-	}
-	function toggleFollow() {
-		scene.camera = { ...scene.camera, follow: !scene.camera.follow };
-	}
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
@@ -302,11 +113,11 @@
 	aria-label="Map of {scene.body
 		.name}. Drag or use arrow keys to pan, scroll, pinch or press plus and minus to zoom, c to centre, f to follow the ship."
 	use:observe
-	onwheel={onWheel}
-	onpointerdown={onPointerDown}
-	onpointermove={onPointerMove}
-	onpointerup={onPointerUp}
-	onpointercancel={onPointerUp}
+	onwheel={gestures.onWheel}
+	onpointerdown={gestures.onPointerDown}
+	onpointermove={gestures.onPointerMove}
+	onpointerup={gestures.onPointerUp}
+	onpointercancel={gestures.onPointerUp}
 >
 	<Grid {mpp} cx={centre.x} cy={centre.y} {rs} inner={field.surface} />
 
@@ -316,56 +127,12 @@
 		role="img"
 		aria-label="{scene.body.name} with your course and your ship"
 	>
-		{#each isochrones as iso (iso.rate)}
-			<circle cx={sx(0)} cy={sy(0)} r={px(iso.r)} class="iso" />
-			{#if labelled.includes(iso.r)}
-				<text x={sx(0) + 4} y={sy(0) - px(iso.r) - 5} class="tag faint">
-					clocks at {formatPercent(iso.rate)}
-				</text>
-			{/if}
-		{/each}
-
-		{#each rings as ring (ring.label)}
-			<circle cx={sx(0)} cy={sy(0)} r={px(ring.r)} class="ring" stroke-dasharray={ring.dash} />
-			{#if labelled.includes(ring.r)}
-				<text x={sx(0) + 4} y={sy(0) - px(ring.r) - 5} class="tag">{ring.label}</text>
-			{/if}
-		{/each}
-
-		<circle cx={sx(0)} cy={sy(0)} r={Math.max(1.5, px(field.surface))} class="body central" />
-		<text x={sx(0) + Math.max(px(field.surface), 1.5) + 8} y={sy(0) + 4} class="tag">
-			{scene.body.name}
-		</text>
-
-		{#each companions as c (c.name)}
-			{#if visibleRing(Math.hypot(c.x, c.y))}
-				<path d={c.path} class="orbit" />
-				<circle cx={sx(c.x)} cy={sy(c.y)} r={Math.max(1.5, px(c.radius))} class="body" />
-				{#if Math.hypot(sx(c.x) - sx(shipXY.x), sy(c.y) - sy(shipXY.y)) > 40}
-					<text x={sx(c.x) + Math.max(1.5, px(c.radius)) + 6} y={sy(c.y) + 4} class="tag"
-						>{c.name}</text
-					>
-				{/if}
-			{/if}
-		{/each}
-
-		<path d={trail} transform={trailShift} class="course" />
-		{#each marks as m, i (i)}
-			<circle cx={sx(m.x)} cy={sy(m.y)} r="3.5" class="mark" class:hold={m.kind === 'hold'} />
-		{/each}
-
-		<g transform="translate({sx(shipXY.x)} {sy(shipXY.y)}) rotate({-heading})">
-			<circle r="4" class="ship" />
-			<line x1="4" x2="16" class="ship-line" />
-		</g>
-		<text x={sx(shipXY.x) + 10} y={sy(shipXY.y) + 14} class="tag accent">You</text>
+		<Rings {view} {field} body={scene.body} />
+		<Companions {view} {scene} ship={shownShip} />
+		<Course {view} {scene} ship={shownShip} />
 	</svg>
 
-	<div class="scale">
-		<span class="bar" style:width="{px(barMetres)}px"></span>
-		<span class="tag">{formatLength(barMetres, { roundKm: true })}</span>
-		<span class="tag faint">{lightLabel}</span>
-	</div>
+	<ScaleBar {mpp} />
 
 	<div class="controls">
 		<button type="button" onclick={() => zoomAt(1 / 1.6, w / 2, h / 2)} aria-label="Zoom in"
@@ -393,46 +160,11 @@
 		inset: 0;
 		display: block;
 	}
-	.body {
+	/* Ink shared by every drawing on the plate. */
+	.plate :global(.body) {
 		fill: var(--ink);
 	}
-	.ring {
-		fill: none;
-		stroke: var(--ink);
-		stroke-width: 0.75;
-	}
-	.orbit {
-		fill: none;
-		stroke: var(--ink-faint);
-		stroke-width: 0.5;
-	}
-	.iso {
-		fill: none;
-		stroke: var(--ink-faint);
-		stroke-width: 0.75;
-		stroke-dasharray: 1 4;
-	}
-	.course {
-		fill: none;
-		stroke: var(--accent);
-		stroke-width: 0.75;
-	}
-	.mark {
-		fill: var(--paper);
-		stroke: var(--accent);
-		stroke-width: 1.2;
-	}
-	.mark.hold {
-		fill: var(--accent);
-	}
-	.ship {
-		fill: var(--accent);
-	}
-	.ship-line {
-		stroke: var(--accent);
-		stroke-width: 1.2;
-	}
-	.tag {
+	.plate :global(.tag) {
 		font: 500 11px/1 var(--font);
 		fill: var(--ink);
 		color: var(--ink);
@@ -442,49 +174,12 @@
 		stroke-width: 3px;
 		stroke-linejoin: round;
 	}
-	.faint {
+	.plate :global(.faint) {
 		fill: var(--ink-faint);
 		color: var(--ink-faint);
 	}
-	.accent {
+	.plate :global(.accent) {
 		fill: var(--accent);
-	}
-	.scale {
-		position: absolute;
-		right: 20px;
-		bottom: 16px;
-		width: max-content;
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		gap: 3px;
-		text-align: right;
-		white-space: nowrap;
-		pointer-events: none;
-	}
-	.scale .tag {
-		stroke: none;
-	}
-	.bar {
-		position: relative;
-		height: 1px;
-		background: var(--ink);
-		margin-bottom: 4px;
-	}
-	.bar::before,
-	.bar::after {
-		content: '';
-		position: absolute;
-		top: -4px;
-		width: 1px;
-		height: 9px;
-		background: var(--ink);
-	}
-	.bar::before {
-		left: 0;
-	}
-	.bar::after {
-		right: 0;
 	}
 	.controls {
 		position: absolute;
@@ -510,10 +205,6 @@
 			left: 16px;
 			right: auto;
 			grid-auto-flow: column;
-		}
-		.scale {
-			top: 44px;
-			bottom: auto;
 		}
 	}
 </style>

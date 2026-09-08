@@ -1,6 +1,7 @@
 import { bodyById, type Body } from '$lib/catalogue';
 import {
 	earthReferenceDeficit,
+	G,
 	Trajectory,
 	type Field,
 	type FlightSample,
@@ -19,14 +20,14 @@ import {
 	type Camera
 } from './defaults';
 import type { SceneSnapshot } from './url';
+import { keplerPeriod, warpCap, WarpMeter } from './warp';
 
 export type Phase = 'orbiting' | 'coasting' | 'holding' | 'landed' | 'horizon';
 
-/** Roughly how many integrator steps one frame can afford, and how many an orbit takes. */
-const STEPS_PER_FRAME = 20_000;
-const STEPS_PER_ORBIT = 320;
 /** Bounded ensure calls a replay may spend catching up to the present before the clock yields. */
 const CATCH_UP_CALLS = 8;
+/** Consecutive frames over the cap before the warp is pulled down to it. */
+const OVER_CAP_FRAMES = 30;
 
 /** Keep a start where an orbit or a hold can exist. */
 function sanitiseStart(start: Start, field: Field): Start {
@@ -47,6 +48,8 @@ export class Scene {
 	body = $state<Body>(bodyById('earth'));
 	plan = $state<Plan>({ start: { r: 1, phi: 0, kind: 'orbit', direction: 1 }, manoeuvres: [] });
 	warp = $state(1);
+	/** Simulated seconds per real second the frame loop is actually achieving, once measured. */
+	effectiveWarp = $state<number | null>(null);
 	t = $state(0);
 	playing = $state(true);
 	camera = $state<Camera>({ frame: 1, cx: 0, cy: 0, follow: false });
@@ -58,6 +61,8 @@ export class Scene {
 	/** Bumped when the flight gains samples, so drawings of the path know to refresh. */
 	samplesVersion = $state(0);
 	trajectory = $state.raw<Trajectory>() as Trajectory;
+	private meter = new WarpMeter();
+	private overCap = 0;
 
 	field = $derived(fieldFor(this.body));
 	space = $derived<Space>(spaceFor(this.body, this.departedAt));
@@ -77,7 +82,7 @@ export class Scene {
 		if (snapshot) {
 			this.body = bodyById(snapshot.body);
 			this.plan = { ...snapshot.plan, start: sanitiseStart(snapshot.plan.start, this.field) };
-			this.warp = Math.min(snapshot.warp, this.maxWarp);
+			this.warp = snapshot.warp;
 			this.t = snapshot.t;
 			this.camera = snapshot.camera ?? defaultCamera(snapshot.plan);
 		} else {
@@ -85,6 +90,7 @@ export class Scene {
 			this.camera = defaultCamera(this.plan);
 		}
 		this.rebuild();
+		this.warp = Math.min(this.warp, this.maxWarp);
 	}
 
 	setBody(id: string) {
@@ -152,6 +158,13 @@ export class Scene {
 		if (!traj.ending && traj.last.t < this.t) this.t = traj.last.t;
 		this.trajectory = traj;
 		this.samplesVersion += 1;
+		this.resetMeter();
+	}
+
+	private resetMeter() {
+		this.meter.reset();
+		this.effectiveWarp = null;
+		this.overCap = 0;
 	}
 
 	/** Move the clock; scrubbing before the kept path replays the flight. */
@@ -163,26 +176,46 @@ export class Scene {
 
 	advance(realSeconds: number) {
 		if (!this.playing) return;
-		const target = this.t + realSeconds * this.warp;
+		const from = this.t;
+		const target = from + realSeconds * this.warp;
 		const before = this.trajectory.samples.length;
 		const last = this.trajectory.last;
 		this.trajectory.ensure(target);
 		if (this.trajectory.samples.length !== before || this.trajectory.last !== last)
 			this.samplesVersion += 1;
 		this.t = this.trajectory.ending ? target : Math.min(target, this.trajectory.last.t);
+		this.meter.record(this.t - from, realSeconds);
+		this.effectiveWarp = this.meter.rate;
+		this.clampWarp();
 	}
 
-	/** Fastest warp the integrator can honour here at sixty frames a second. */
+	/** Pull the warp down to the cap once the ship has sat on a tighter orbit for a moment. */
+	private clampWarp() {
+		if (this.warp <= this.maxWarp) {
+			this.overCap = 0;
+			return;
+		}
+		if (++this.overCap < OVER_CAP_FRAMES) return;
+		this.warp = this.maxWarp;
+		this.resetMeter();
+	}
+
+	/** Fastest warp the integrator can honour on the orbit the ship is on now. */
 	maxWarp = $derived.by(() => {
-		const period = this.field.orbitPeriod(this.plan.start.r, this.plan.start.direction);
-		const allowed = WARPS.filter((w) => w <= STEPS_PER_FRAME * (period / STEPS_PER_ORBIT) * 60);
-		return allowed[allowed.length - 1] ?? WARPS[0];
+		const s = this.ship;
+		if (s.phase === 'landed' || s.phase === 'horizon') return WARPS[WARPS.length - 1];
+		const period =
+			this.space.regime === 'geodesic'
+				? this.field.orbitPeriod(s.r, this.plan.start.direction)
+				: keplerPeriod(G * this.field.mass, s.r, s.speed);
+		return warpCap(period);
 	});
 
 	stepWarp(direction: 1 | -1) {
 		const i = WARPS.indexOf(this.warp);
 		const next = WARPS[Math.min(WARPS.length - 1, Math.max(0, (i < 0 ? 0 : i) + direction))];
 		this.warp = Math.min(next, this.maxWarp);
+		this.resetMeter();
 	}
 
 	snapshot(): SceneSnapshot {

@@ -90,6 +90,8 @@ export class Trajectory {
 	private queue: Manoeuvre[];
 	private lastPushedPhi = NaN;
 	private lastPushedT = -Infinity;
+	/** Samples a manoeuvre or ending landed on; never rewritten and never thinned away. */
+	private pinned = new Set<FlightSample>();
 
 	constructor(
 		private space: Space,
@@ -148,14 +150,30 @@ export class Trajectory {
 
 	private push(s: FlightSample, force: boolean) {
 		const moved = Math.abs(s.phi - this.lastPushedPhi) >= 0.004 || s.t - this.lastPushedT >= 1;
-		if (!force && !moved && this.samples.length > 1) {
+		if (!force && !moved && this.samples.length > 1 && !this.pinned.has(this.last)) {
 			this.samples[this.samples.length - 1] = s;
 			return;
 		}
+		if (force) this.pinned.add(s);
 		this.samples.push(s);
 		this.lastPushedPhi = s.phi;
 		this.lastPushedT = s.t;
-		if (this.samples.length > MAX_SAMPLES) this.samples.splice(0, this.samples.length >> 2);
+		if (this.samples.length > MAX_SAMPLES) this.thin();
+	}
+
+	/**
+	 * Drop every second unpinned sample from the older half, into a new array so anything
+	 * caching a projection of the old one sees the change. The first sample always survives.
+	 */
+	private thin() {
+		const old = this.samples;
+		const half = old.length >> 1;
+		const kept: FlightSample[] = [];
+		for (let i = 0; i < half; i++) {
+			if (i % 2 === 0 || this.pinned.has(old[i])) kept.push(old[i]);
+		}
+		for (let i = half; i < old.length; i++) kept.push(old[i]);
+		this.samples = kept;
 	}
 
 	stateAt(t: number): FlightSample {

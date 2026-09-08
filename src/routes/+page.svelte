@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import { formatDrift, formatRelativeRate, formatThrust } from '$lib/format';
+	import { formatDrift, formatLength, formatRelativeRate, formatThrust } from '$lib/format';
 	import Plate from '$lib/plate/Plate.svelte';
 	import { Scene } from '$lib/sim/scene.svelte';
 	import { Ticker } from '$lib/sim/ticker';
@@ -32,6 +32,11 @@
 		}
 		if (scene.ship.phase === 'landed') {
 			return `You are standing on ${scene.body.name}. Standing here takes ${formatThrust(scene.ship.thrust)}, and ${rate}.`;
+		}
+		if (scene.beyondInfluence && scene.influence) {
+			const { body, radius, missing } = scene.influence;
+			const puller = missing.kind === 'planet' ? missing.name : `the ${missing.name}`;
+			return `The flight has left ${body.name}’s sphere of influence, about ${formatLength(Number(radius.toPrecision(2)))} out. Nothing here pulls for ${puller}, so the path from now on is illustrative only.`;
 		}
 		if (rate.includes('per day'))
 			return `Your clock is running ${rate}. Fly closer to something heavy.`;

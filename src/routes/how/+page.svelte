@@ -142,7 +142,10 @@
 	<p>
 		Companions move on their real Kepler ellipses from published elements, placed where they are
 		today. Their orbits are drawn in the plane of the plate; inclinations are ignored. Near compact
-		bodies the companions are scenery and do not pull on the ship.
+		bodies the companions are scenery and do not pull on the ship. A scene is only right out to the
+		Hill sphere of the last body it pulls with, about 1.5 million km from Earth for the Earth and
+		Moon scenes; beyond it the Sun would take over, nothing here stands in for it, and the page says
+		so.
 	</p>
 
 	<h2 class="label">Landmarks around a black hole</h2>

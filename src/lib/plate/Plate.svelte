@@ -7,6 +7,8 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import Grid from './Grid.svelte';
 	import { isochroneRadius } from './metric';
+	import { Trail } from './trail';
+	import type { FlightSample } from '$lib/physics';
 
 	let { scene }: { scene: Scene } = $props();
 
@@ -136,17 +138,31 @@
 		return Number.isFinite(ang) ? (ang * 180) / Math.PI : 0;
 	});
 
-	/** The flown and computed path, thinned to at most 1500 points, in screen space. */
+	/** The flown path in screen pixels at the current zoom, panned by a transform so it grows in place. */
+	const trailCache = new Trail();
+	let trailOrigin = $state({ x: 0, y: 0 });
 	let trail = $derived.by(() => {
 		void scene.samplesVersion;
 		const pts = scene.trajectory.samples;
-		const step = Math.max(1, Math.ceil(pts.length / 1500));
-		let d = '';
-		for (let i = 0; i < pts.length; i += step) {
-			const p = polarXY(pts[i]);
-			d += `${i === 0 ? 'M' : 'L'}${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`;
-		}
-		return d;
+		const origin = trailOrigin;
+		const key = `${scene.camera.frame}|${w}|${h}|${origin.x}|${origin.y}`;
+		const project = (s: FlightSample) => {
+			const p = polarXY(s);
+			return { x: w / 2 + (p.x - origin.x) / mpp, y: h / 2 - (p.y - origin.y) / mpp };
+		};
+		const d = trailCache.extend(pts, key, project);
+		const last = pts[pts.length - 1];
+		if (!last) return '';
+		const p = project(last);
+		return `${d}${d ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+	});
+	let trailShift = $derived(
+		`translate(${((trailOrigin.x - centre.x) / mpp).toFixed(2)} ${(-(trailOrigin.y - centre.y) / mpp).toFixed(2)})`
+	);
+	$effect(() => {
+		const dx = Math.abs(centre.x - trailOrigin.x) / mpp;
+		const dy = Math.abs(centre.y - trailOrigin.y) / mpp;
+		if (dx > 1e5 || dy > 1e5) trailOrigin = { x: centre.x, y: centre.y };
 	});
 
 	let marks = $derived(
@@ -333,7 +349,7 @@
 			{/if}
 		{/each}
 
-		<path d={trail} class="course" />
+		<path d={trail} transform={trailShift} class="course" />
 		{#each marks as m, i (i)}
 			<circle cx={sx(m.x)} cy={sy(m.y)} r="3.5" class="mark" class:hold={m.kind === 'hold'} />
 		{/each}

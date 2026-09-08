@@ -2,6 +2,7 @@ import { bodyById, type Body } from '$lib/catalogue';
 import {
 	earthReferenceDeficit,
 	G,
+	keplerState,
 	Trajectory,
 	type Field,
 	type FlightSample,
@@ -13,7 +14,9 @@ import {
 import {
 	defaultCamera,
 	defaultPlan,
+	elementsOf,
 	fieldFor,
+	influenceFor,
 	solarDeficit,
 	spaceFor,
 	WARPS,
@@ -77,6 +80,18 @@ export class Scene {
 	drift = $derived(this.shipTau - this.earthElapsed);
 	shipMs = $derived(this.departedAt + this.shipTau * 1000);
 	earthMs = $derived(this.departedAt + this.earthElapsed * 1000);
+	influence = $derived(influenceFor(this.body));
+	/** True once the ship is outside the Hill sphere of the last body this scene pulls with. */
+	beyondInfluence = $derived.by(() => {
+		const limit = this.influence;
+		if (!limit) return false;
+		const s = this.ship;
+		if (!limit.orbit) return s.r > limit.radius;
+		const p = keplerState(elementsOf(limit.orbit), this.space.epoch + s.t);
+		const dx = s.r * Math.cos(s.phi) - p.x;
+		const dy = s.r * Math.sin(s.phi) - p.y;
+		return Math.hypot(dx, dy) > limit.radius;
+	});
 
 	constructor(snapshot?: SceneSnapshot | null) {
 		if (snapshot) {
@@ -203,7 +218,8 @@ export class Scene {
 	/** Fastest warp the integrator can honour on the orbit the ship is on now. */
 	maxWarp = $derived.by(() => {
 		const s = this.ship;
-		if (s.phase === 'landed' || s.phase === 'horizon') return WARPS[WARPS.length - 1];
+		if (s.phase === 'landed' || s.phase === 'horizon' || this.beyondInfluence)
+			return WARPS[WARPS.length - 1];
 		const period =
 			this.space.regime === 'geodesic'
 				? this.field.orbitPeriod(s.r, this.plan.start.direction)

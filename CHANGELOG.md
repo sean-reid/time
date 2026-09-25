@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/sean-reid/time/compare/time-v0.2.0...time-v0.2.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **plate:** draw the ship marker from the same state as the trail ([#73](https://github.com/sean-reid/time/issues/73)) ([0737c04](https://github.com/sean-reid/time/commit/0737c04585c4c0ed1cd1f72b952824c7932cb211))
+* **plate:** stop the trail interpolating across gaps of a lap or more ([#75](https://github.com/sean-reid/time/issues/75)) ([5e15081](https://github.com/sean-reid/time/commit/5e1508163a64789992fac8dbbf28b64c0fa4985b))
+
 ## [0.2.0](https://github.com/sean-reid/time/compare/time-v0.1.0...time-v0.2.0) (2026-09-08)
 
 

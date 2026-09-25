@@ -44,7 +44,7 @@
 		"typescript-eslint": "^8.60.1",
 		"vite": "^8.3.0",
 		"vitest": "^4.1.8",
-		"wrangler": "^4.129.1"
+		"wrangler": "^4.136.3"
 	},
 	"engines": {
 		"node": ">=24"

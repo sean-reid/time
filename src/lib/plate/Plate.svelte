@@ -17,25 +17,9 @@
 	let h = $state(1000);
 	let mpp = $derived(scene.camera.frame / Math.min(w, h));
 
-	let reducedMotion = $state(false);
 	let narrow = $state(false);
-	let shownShip = $state({ x: 0, y: 0 });
-	let lastShown = 0;
-	$effect(() => {
-		const xy = polarXY(scene.ship);
-		if (!reducedMotion) {
-			shownShip = xy;
-			return;
-		}
-		const now = performance.now();
-		if (now - lastShown >= 1000) {
-			lastShown = now;
-			shownShip = xy;
-		}
-	});
-	let centre = $derived(
-		scene.camera.follow ? shownShip : { x: scene.camera.cx, y: scene.camera.cy }
-	);
+	let shipXY = $derived(polarXY(scene.ship));
+	let centre = $derived(scene.camera.follow ? shipXY : { x: scene.camera.cx, y: scene.camera.cy });
 	let view = $derived<View>({ w, h, mpp, cx: centre.x, cy: centre.y });
 
 	let field = $derived(scene.field);
@@ -53,10 +37,6 @@
 			h = e.contentRect.height;
 		});
 		ro.observe(node);
-		const motion = matchMedia('(prefers-reduced-motion: reduce)');
-		reducedMotion = motion.matches;
-		const onMotion = () => (reducedMotion = motion.matches);
-		motion.addEventListener('change', onMotion);
 		const width = matchMedia('(max-width: 899px)');
 		narrow = width.matches;
 		const onWidth = () => (narrow = width.matches);
@@ -64,7 +44,6 @@
 		return {
 			destroy: () => {
 				ro.disconnect();
-				motion.removeEventListener('change', onMotion);
 				width.removeEventListener('change', onWidth);
 			}
 		};
@@ -144,7 +123,7 @@
 	>
 		<Rings {view} {rings} {isochrones} surface={field.surface} />
 		<Companions {view} {companions} />
-		<Course {view} {scene} ship={shownShip} />
+		<Course {view} {scene} ship={shipXY} />
 		<Captions
 			{view}
 			{scene}
@@ -153,7 +132,7 @@
 			{rings}
 			{isochrones}
 			{companions}
-			ship={shownShip}
+			ship={shipXY}
 			{narrow}
 		/>
 	</svg>

@@ -68,6 +68,17 @@ describe('trail', () => {
 		for (const r of radii) expect(r).toBeCloseTo(300, 0);
 	});
 
+	it('breaks the path across a gap of a lap or more instead of drawing a spiral', () => {
+		const a = sample(0, 300, 0);
+		const b = sample(1, 300, 0);
+		b.phi = 40 * Math.PI;
+		const c = sample(2, 0, 300);
+		c.phi = 40 * Math.PI + Math.PI / 2;
+		const d = new Trail().extend([a, b, c, sample(3, -300, 0)], 'k', project);
+		expect((d.match(/M/g) ?? []).length).toBe(2);
+		expect((d.match(/L/g) ?? []).length).toBeLessThan(40);
+	});
+
 	it('draws only the flown part and starts over when the present moves back', () => {
 		const pts = [0, 10, 20, 30, 40].map((x) => sample(x, x, 0));
 		expect(flownCount(pts, 25)).toBe(3);

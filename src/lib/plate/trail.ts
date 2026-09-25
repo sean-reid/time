@@ -10,9 +10,11 @@ export interface Point {
  * call and keeping a point whenever it moves at least `tolerance` pixels from the last kept one.
  * Only the first `count` samples take part, and the result excludes the last of those, which the
  * integrator may still rewrite in place. Thinned stretches whose samples sit far apart in angle
- * are joined along the orbit rather than by a chord across it.
+ * are joined along the orbit rather than by a chord across it, and a gap of a full lap or more
+ * breaks the path, since the two samples no longer describe one stretch of flight.
  */
 const ARC_STEP = 0.1;
+const MAX_ARC = 2 * Math.PI;
 
 export class Trail {
 	private key = '';
@@ -41,6 +43,7 @@ export class Trail {
 			this.first = samples[0] ?? null;
 			this.count = 0;
 			this.d = '';
+			this.lifted = false;
 			this.lx = NaN;
 			this.ly = NaN;
 		}
@@ -49,13 +52,18 @@ export class Trail {
 			if (i > 0) {
 				const a = samples[i - 1];
 				const b = samples[i];
-				const steps = Math.ceil(Math.abs(b.phi - a.phi) / ARC_STEP);
-				for (let k = 1; k < steps; k++) {
-					const f = k / steps;
-					this.add(
-						project({ ...a, r: a.r + f * (b.r - a.r), phi: a.phi + f * (b.phi - a.phi) }),
-						tolerance
-					);
+				const gap = Math.abs(b.phi - a.phi);
+				if (gap >= MAX_ARC) {
+					this.lift();
+				} else {
+					const steps = Math.ceil(gap / ARC_STEP);
+					for (let k = 1; k < steps; k++) {
+						const f = k / steps;
+						this.add(
+							project({ ...a, r: a.r + f * (b.r - a.r), phi: a.phi + f * (b.phi - a.phi) }),
+							tolerance
+						);
+					}
 				}
 			}
 			this.add(project(samples[i]), tolerance);
@@ -64,9 +72,16 @@ export class Trail {
 		return this.d;
 	}
 
+	private lifted = false;
+
+	private lift(): void {
+		this.lifted = true;
+	}
+
 	private add(p: Point, tolerance: number): void {
-		if (this.d === '') {
-			this.d = `M${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+		if (this.d === '' || this.lifted) {
+			this.d += `M${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+			this.lifted = false;
 		} else if (Math.hypot(p.x - this.lx, p.y - this.ly) < tolerance) {
 			return;
 		} else {

@@ -2,7 +2,7 @@
 
 An interactive map of how gravity and motion change the passage of time. Start on an orbit around the Sun, a neutron star, or Sagittarius A*, kick the ship, and watch your clock drift from the one you left on Earth. The physics is general relativity and cited measurements: exact equatorial Kerr geodesics around compact bodies, Newtonian motion with the first-order clock around the Sun and its planets.
 
-Live at https://time.dwainosaur.com.
+Live at https://time.seanre.id.
 
 ## Run
 

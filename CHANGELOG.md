@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/sean-reid/time/compare/time-v0.2.1...time-v0.3.0) (2026-11-26)
+
+
+### Features
+
+* serve the site from time.seanre.id ([#89](https://github.com/sean-reid/time/issues/89)) ([7a1d6e7](https://github.com/sean-reid/time/commit/7a1d6e76f8771c4776fc04bbdda1704f4d2306e6))
+
 ## [0.2.1](https://github.com/sean-reid/time/compare/time-v0.2.0...time-v0.2.1) (2026-09-25)
 
 

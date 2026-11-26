@@ -8,7 +8,7 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
-	"routes": [{ "pattern": "time.dwainosaur.com", "custom_domain": true }],
+	"routes": [{ "pattern": "time.seanre.id", "custom_domain": true }],
 	"workers_dev": true,
 	"preview_urls": true,
 	"limits": { "cpu_ms": 2000 },
